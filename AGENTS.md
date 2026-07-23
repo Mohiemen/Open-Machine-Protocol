@@ -44,6 +44,11 @@ root, links keep working as authored.
 3. **`docs/spec/omp-schema-v0.1.md`** - the source of truth for envelope and
    schema facts. When other docs disagree with it, the spec wins (see REVIEW.md
    section 1 for the known cases).
+4. **`docs/docs/architecture/10-roadmap/milestone-plan.md`** - the living
+   roadmap. **Mandatory**: any change that completes, adds, reorders, or
+   invalidates a roadmap item MUST update this file in the same commit/PR -
+   check the item off with a date, bump `Last updated`, and append a changelog
+   line. A milestone is not achieved until recorded there.
 
 ## Conventions
 

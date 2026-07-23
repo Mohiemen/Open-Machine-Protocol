@@ -80,7 +80,7 @@ bidirectional. Verified issues:
 | `README.md` | `docs/guides/writing-a-profile.md` (x2) | Referenced 3+ times project-wide; does not exist |
 | `README.md` | `docs/reference/` | No reference docs in bundle |
 | `README.md` | `docs/translations/` | No translations dir |
-| `README.md` | `docs/architecture/10-roadmap/milestone-plan.md` | Missing |
+| `README.md` | `docs/architecture/10-roadmap/milestone-plan.md` | ~~Missing~~ **Resolved 2026-07-23** - created as the living roadmap |
 | `README.md` | `LICENSE` | Exists at repo root, not inside the bundle root; broken while the bundle lives under `/docs` |
 | `README.md` | `examples/grafana-dashboards/`, `tools/omp-sniff/` | Code dirs - expected to exist in the implementation repo, absent here |
 | `CONTRIBUTING.md` | `docs/translations/`, `tools/omp-sniff/` | As above |
@@ -123,9 +123,10 @@ Ordered by how hard the absence bites:
    the hardening guide calls itself "the deployable checklist derived from the
    threat model", but the threat model doc is absent (section 1 of the guide is a
    4-line summary).
-5. **Milestone plan / roadmap** (`10-roadmap/milestone-plan.md`) - README Status
-   section links it; roadmap content is currently scattered (architecture doc
-   section 8/9, profile tables).
+5. ~~**Milestone plan / roadmap** (`10-roadmap/milestone-plan.md`)~~ -
+   **Resolved 2026-07-23**: created as a living roadmap consolidating the
+   scattered roadmap content (architecture doc sections 8/9, README Status,
+   vision doc section 7), with a mandatory keep-current rule.
 6. **Reference documentation** (`docs/reference/` - schemas, config, CLI, MQTT
    topics) - linked from the README documentation table. CLI behavior
    (`omp-gateway install-service`, `tail`, `dead-letters`, `retrofit-update`,

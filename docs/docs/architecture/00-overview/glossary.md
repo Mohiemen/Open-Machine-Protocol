@@ -29,7 +29,7 @@ Any system that ingests OMP data - factory OS (e.g. Intelactory), MES, ERP, CMMS
 The five industry-neutral schemas - `machine`, `event`, `process_run`, `energy`, `telemetry` - plus the envelope. The core contains no industry-specific and no vendor-specific fields, ever.
 
 **Dead letter**
-A message that failed schema validation at the gateway. Written to a local dead-letter file for inspection, never silently dropped and never exported as valid data.
+A message that failed schema validation at the gateway. Written to the local dead-letter store with its validation error attached, for inspection - never silently dropped and never exported as valid data.
 
 **Domain Profile (or just Profile)**
 A small versioned package that specializes the core for one industry or machine family. Defines a machine class taxonomy, an event vocabulary extending the core set, process phase semantics, recommended telemetry channels, and its own conformance vectors. Examples - `textile-sewing`, `textile-dyeing`, `machining`. The `generic` profile is the fallback that lets any machine stream core events with no profile-specific semantics.
@@ -59,7 +59,7 @@ The project as a whole - specification, gateway implementation, adapter and prof
 A bounded unit of work recorded in `process_run.json` - a dye batch, a CNC job, a molding cycle group, a shift. Contains phases, timestamps, outcome, and quantities. The genealogy unit that DPP-class traceability builds on.
 
 **Retrofit (node / kit)**
-Open hardware (typically ESP32-based) attached to a machine with no digital output - CT clamp for energy, vibration sensor, optical cycle counter. A retrofit node is a special adapter class that reports to the gateway over local WiFi or ESP-NOW using the same envelope format.
+Open hardware (typically ESP32-based) attached to a machine with no digital output - CT clamp for energy, vibration sensor, optical cycle counter. A retrofit node is a special adapter class that reports to the gateway over local WiFi (ESP-NOW transport is a roadmap candidate) using the same envelope format.
 
 **Seq (sequence number)**
 A per-machine, monotonically increasing counter assigned by the gateway. Gaps in `seq` are detectable by any consumer, which is what makes data completeness auditable.
@@ -72,6 +72,9 @@ Continuous sensor streams (temperature, vibration, current) carried in `telemetr
 **Checksum**
 SHA-256 hash over the envelope body, computed at the gateway before buffering. Detects post-emission tampering.
 
+**Honesty ladder**
+The graded trust vocabulary carried in `source` (energy) and `data_source` (machine) fields - `native` controller data, `submeter`, `ct_clamp`/`retrofit` measurement, `estimated`. Consumers and DPP claims weight evidence accordingly; a claim built on estimates must say so.
+
 **Gateway keypair**
 An Ed25519 keypair generated at gateway installation. The public key identifies the gateway to consumers; the private key never leaves the device.
 
@@ -79,7 +82,7 @@ An Ed25519 keypair generated at gateway installation. The public key identifies 
 Data whose lineage can be verified back to a specific gateway and sequence range via checksums and signatures, as opposed to self-declared data entered by a person. OMP's evidence claims are always scoped honestly - see the DPP Evidence Chain guide for exactly what is and is not proven.
 
 **Signature**
-Optional Ed25519 signature over the envelope for high-assurance deployments. Distinct from the always-present checksum.
+Optional Ed25519 signature over `gateway_id || machine_id || seq || checksum` (per the core spec) for high-assurance deployments. Distinct from the always-present checksum.
 
 ## Ecosystem and Governance Terms
 

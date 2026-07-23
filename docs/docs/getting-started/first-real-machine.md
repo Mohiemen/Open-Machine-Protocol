@@ -27,7 +27,7 @@ On a fresh Raspberry Pi OS Lite (64-bit) or Debian/Ubuntu:
 ```bash
 sudo apt update && sudo apt install -y python3.11-venv git
 git clone https://github.com/Mohiemen/Open-Machine-Protocol
-cd omp
+cd Open-Machine-Protocol
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ./gateway -e ./tools
 

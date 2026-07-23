@@ -29,14 +29,16 @@ is in effect until spec v1.0 or 5 core maintainers from 3 organizations.
 - [x] Adapter Plugin API v0.1 draft *(2026-07-23)*
 - [x] Getting-started, guides, integrations, security, community docs *(2026-07-23)*
 - [x] Documentation consistency review (docs/REVIEW.md) *(2026-07-23)*
-- [ ] Resolve REVIEW.md section 1 conflicts (checksum format, telemetry fields, field naming, README overclaims)
-- [ ] MAINTAINERS.md with conduct and security contacts
-- [ ] Writing a Profile guide (docs/guides/writing-a-profile.md)
+- [x] Resolve REVIEW.md section 1 conflicts (checksum format, telemetry fields, field naming, README overclaims) *(2026-07-23)*
+- [x] MAINTAINERS.md with conduct and security contacts (bootstrap version; independent conduct contact still open) *(2026-07-23)*
+- [x] Writing a Profile guide (docs/guides/writing-a-profile.md) *(2026-07-23)*
 - [ ] Security architecture / threat model doc (05-crosscutting)
 - [ ] textile-sewing profile documented (classes, events, phases)
-- [ ] Reference section scaffold (docs/reference/)
-- [ ] Translations scaffold (docs/translations/), Bangla quickstart first
-- [ ] rfcs/ directory with 0000-template.md; ADR directory (06-decisions/)
+- [x] Reference section scaffold (docs/reference/) - actual pages land with M2 *(2026-07-23)*
+- [x] Translations scaffold (docs/translations/) *(2026-07-23)* - Bangla quickstart itself still open
+- [x] rfcs/ directory with 0000-template.md; ADR directory (06-decisions/) *(2026-07-23)*
+- [ ] Bangla quickstart translation
+- [ ] Independent conduct contact appointed (MAINTAINERS.md bootstrap note)
 
 ### M1 - Normative spec artifacts
 
@@ -123,3 +125,4 @@ Per README Status and vision doc section 7:
 | Date | Change |
 |---|---|
 | 2026-07-23 | Roadmap created; consolidated from README Status, architecture doc sections 8-9, vision doc section 7, and REVIEW.md gap list. M0 documentation items marked complete. |
+| 2026-07-23 | REVIEW.md fix pass: all section-1 conflicts resolved; broken links repaired; MAINTAINERS.md, writing-a-profile guide, RFC template, ADR dir, translations and reference scaffolds created. Split out Bangla quickstart and independent conduct contact as their own items. |

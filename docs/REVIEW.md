@@ -11,6 +11,9 @@ spec, guides, and integration docs. The issues below are the exceptions.
 
 ## 1. Conflicts / Contradictions
 
+> **Status update 2026-07-23**: all items in this section (1.1-1.10) have been
+> fixed as recommended. Details retained below for the record.
+
 ### 1.1 Checksum format - spec vs README and architecture doc
 - `spec/omp-schema-v0.1.md` section 2 defines `checksum` as **"lowercase hex SHA-256"** (example `"a3f1...c9"`), and the quickstart matches (`"9f2a..."`).
 - `README.md` (envelope example) and `docs/architecture/system-architecture.md` section 4.1 show `"checksum": "sha256-..."` - a prefixed format the spec does not allow.
@@ -75,6 +78,12 @@ bidirectional. Verified issues:
 
 ### 2.1 Broken relative links (target missing from bundle)
 
+> **Status update 2026-07-23**: all links below now resolve - targets were
+> created (`writing-a-profile.md`, `reference/`, `translations/`, milestone
+> plan), the LICENSE link repointed to the repo root, and the implementation
+> directory links (`examples/`, `tools/`) converted to plain code references
+> until the implementation exists.
+
 | Source | Link | Note |
 |---|---|---|
 | `README.md` | `docs/guides/writing-a-profile.md` (x2) | Referenced 3+ times project-wide; does not exist |
@@ -87,6 +96,13 @@ bidirectional. Verified issues:
 | `docs/getting-started/faq.md` | `../translations/` | Missing |
 
 ### 2.2 Prose references to documents that don't exist (not hyperlinked, still dangling)
+
+> **Status update 2026-07-23**: resolved - `MAINTAINERS.md` (bootstrap
+> version), `rfcs/0000-template.md`, and the ADR directory
+> (`06-decisions/README.md`) now exist. Still open: the threat-model doc
+> (05-crosscutting), performance-targets doc, 08-operations docs, and all
+> normative JSON artifacts (`spec/schemas/`, `spec/conformance/`) - these are
+> tracked in the [milestone plan](docs/architecture/10-roadmap/milestone-plan.md).
 
 - `docs/security/hardening-guide.md` → `architecture/05-crosscutting/security-architecture.md` (threat model) - missing.
 - `docs/community/code-of-conduct.md` → `MAINTAINERS.md` (twice; conduct contacts live there) - missing. **This one matters: the CoC currently has no reachable reporting contact.**
@@ -111,11 +127,11 @@ them nested, when ready.
 
 Ordered by how hard the absence bites:
 
-1. **Writing a Profile guide** - the #2 ranked contribution in both README and
-   CONTRIBUTING, linked repeatedly, listed in the repo tree. PROFILE-SPEC covers
-   the *what*; the promised how-to guide doesn't exist.
-2. **MAINTAINERS.md** - CoC enforcement contacts, maintainer roster, and conduct
-   reporting all route through it.
+1. ~~**Writing a Profile guide**~~ - **Resolved 2026-07-23**: authored as the
+   how-to companion to PROFILE-SPEC (`docs/guides/writing-a-profile.md`).
+2. ~~**MAINTAINERS.md**~~ - **Resolved 2026-07-23**: bootstrap version created
+   naming the founder/BDFL; independent conduct contact noted as a tracked
+   bootstrap task.
 3. **Normative JSON Schemas + conformance vectors** - both spec documents defer
    normativity to JSON artifacts that aren't in the bundle. Until they exist, the
    "prose has a bug if they disagree" rule points at nothing.
@@ -127,18 +143,17 @@ Ordered by how hard the absence bites:
    **Resolved 2026-07-23**: created as a living roadmap consolidating the
    scattered roadmap content (architecture doc sections 8/9, README Status,
    vision doc section 7), with a mandatory keep-current rule.
-6. **Reference documentation** (`docs/reference/` - schemas, config, CLI, MQTT
-   topics) - linked from the README documentation table. CLI behavior
-   (`omp-gateway install-service`, `tail`, `dead-letters`, `retrofit-update`,
-   `audit-host`, `omp-sniff` modes) is described only incidentally inside guides.
-7. **Translations** (`docs/translations/`) - declared a first-class deliverable
-   (vision principle 7, CONTRIBUTING #5, FAQ) with Bangla explicitly first; the
-   directory does not exist even as a scaffold.
-8. **RFC template file + rfcs/ directory** - process doc says "copy
-   `rfcs/0000-template.md`"; the template only exists inline.
-9. **ADR directory** (`06-decisions/`) - the RFC process outputs ADRs; nowhere to
-   put them, and no ADR template. Architecture numbering (00, 04 present; 01-03,
-   05-10 absent) implies a planned structure worth stubbing with an index.
+6. **Reference documentation** (`docs/reference/`) - **Partially resolved
+   2026-07-23**: scaffold created with a planned-pages index and interim
+   pointers; the actual reference pages land with the v0.1 implementation.
+7. ~~**Translations** (`docs/translations/`)~~ - **Resolved 2026-07-23**:
+   scaffold created with priority order, layout convention, and status table.
+8. ~~**RFC template file + rfcs/ directory**~~ - **Resolved 2026-07-23**:
+   `rfcs/0000-template.md` created from the inline template.
+9. ~~**ADR directory** (`06-decisions/`)~~ - **Resolved 2026-07-23**: created
+   with index and ADR format. Remaining architecture numbering (01-03, 05,
+   07-09) stays absent until those docs are written - tracked in the milestone
+   plan.
 10. **textile-sewing profile documentation** - shipped as 🟢 v0.1 in README and
     used in every example, but unlike textile-dyeing (worked example in
     PROFILE-SPEC section 8) its machine classes, events, and phases are defined

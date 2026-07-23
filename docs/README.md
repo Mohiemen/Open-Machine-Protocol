@@ -42,7 +42,7 @@ Read the full story in [Vision and Scope](docs/architecture/00-overview/vision-a
 └────────────────────────────────────────────────────────┘
 ```
 
-Every message is wrapped in a signed envelope:
+Every message is wrapped in a checksummed envelope (optionally signed with the gateway's Ed25519 key):
 
 ```json
 {
@@ -54,18 +54,18 @@ Every message is wrapped in a signed envelope:
   "ts": "2026-07-24T09:14:03.221Z",
   "schema": "event",
   "body": { "event_type": "cycle_complete", "payload": { "stitch_count": 412 } },
-  "checksum": "sha256-..."
+  "checksum": "9f2a...c4"
 }
 ```
 
 The `gateway_id` + `seq` + `checksum` triple is what makes downstream claims auditable. Gaps are detectable. Tampering is detectable. That is the difference between self-declared and machine-attested.
 
-## Quickstart in 60 Seconds (no hardware needed)
+## Quickstart (no hardware needed)
 
 ```bash
 git clone https://github.com/Mohiemen/Open-Machine-Protocol
-cd omp
-pip install -e ./gateway ./tools
+cd Open-Machine-Protocol
+pip install -e ./gateway -e ./tools
 
 # Start a simulated 10-machine sewing line
 omp-simulate --profile textile-sewing --machines 10 | omp-validate
@@ -75,7 +75,7 @@ omp-simulate --profile textile-sewing --machines 10 --export mqtt://localhost:18
 mosquitto_sub -t 'omp/#' -v
 ```
 
-Then point Grafana at the broker using [examples/grafana-dashboards](examples/grafana-dashboards/) and you have a live factory floor in your terminal.
+Then point Grafana at the broker using `examples/grafana-dashboards/` (ships with the implementation) and you have a live factory floor in your terminal.
 
 Ready for real hardware? Start with [Your First Real Machine](docs/getting-started/first-real-machine.md).
 
@@ -93,7 +93,7 @@ Ready for real hardware? Start with [Your First Real Machine](docs/getting-start
 | `fanuc-focas` | FOCAS | Fanuc CNC controllers | 🟡 planned |
 | `siemens-s7` | S7comm | Siemens S7 PLC family | 🟡 planned |
 
-Your machine not here? That's the point of the project. See [Writing an Adapter](docs/guides/writing-an-adapter.md) - target time from "I have this machine" to merged adapter is four weekends, and [omp-sniff](tools/omp-sniff/) helps you capture and decode unknown protocols.
+Your machine not here? That's the point of the project. See [Writing an Adapter](docs/guides/writing-an-adapter.md) - target time from "I have this machine" to merged adapter is four weekends, and `omp-sniff` (in `tools/`) helps you capture and decode unknown protocols.
 
 ## Domain Profiles
 
@@ -158,7 +158,7 @@ OMP is pre-1.0 and under active development. The v0.1 milestone targets a publis
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](../LICENSE).
 
 ---
 

@@ -81,9 +81,9 @@ JSON Schema draft 2020-12, semantically versioned. Every payload carries `omp_ve
 |---|---|---|
 | `machine.json` | Identity and capability declaration | `machine_id`, `machine_class` (from profile taxonomy), `make`, `model`, `profile`, `capabilities[]`, `location` (site/area/line/station) |
 | `event.json` | Discrete occurrences | `event_type` (core set + profile vocabulary), `ts`, `seq`, `severity`, `payload` |
-| `process_run.json` | Bounded unit of work | `run_id`, `run_type` (batch, job, cycle_group, shift), `recipe_or_program_ref`, `phases[]`, `start_ts`, `end_ts`, `outcome`, `quantities[]` |
-| `energy.json` | Utility consumption | `metric` (kwh, water_l, steam_kg, air_m3, gas_m3), `value`, `interval`, `source` (native/ct_clamp/estimated) |
-| `telemetry.json` | Continuous sensor streams | `channel`, `unit`, `sample_rate`, `values[]` or `stats` (min/max/avg) |
+| `process_run.json` | Bounded unit of work | `run_id`, `run_type` (batch, job, cycle_group, shift), `program_ref`, `phases[]`, `start_ts`, `end_ts`, `outcome`, `quantities[]` |
+| `energy.json` | Utility consumption | `metric` (kwh, water_l, steam_kg, air_m3, gas_m3), `value`, `interval`, `source` (native/ct_clamp/submeter/estimated) |
+| `telemetry.json` | Continuous sensor streams | `channel`, `unit` (UCUM), `mode` (samples/stats), `samples[]` of `{t, v}` pairs or `stats` (min/max/avg/count) |
 
 **Core event types (universal)** - `run_start`, `run_end`, `cycle_complete`, `stop`, `start`, `error`, `alarm`, `maintenance_flag`, `state_change`. Everything more specific comes from a profile.
 
@@ -99,7 +99,7 @@ JSON Schema draft 2020-12, semantically versioned. Every payload carries `omp_ve
   "ts": "2026-07-24T09:14:03.221Z",
   "schema": "event",
   "body": { },
-  "checksum": "sha256-..."
+  "checksum": "9f2a...c4"
 }
 ```
 

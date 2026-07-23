@@ -23,7 +23,7 @@ A profile brings an entire industry into OMP. Requires an RFC and at least 2 pra
 
 ### 3. Protocol captures (no coding required)
 
-Have access to a machine we don't support but can't write the adapter yourself? Run [omp-sniff](tools/omp-sniff/) while the machine operates, describe what the machine was doing at each stage, and open an issue with the capture attached. A capture with good annotations is 60% of an adapter. This is the single most valuable non-code contribution.
+Have access to a machine we don't support but can't write the adapter yourself? Run `omp-sniff` (in `tools/`) while the machine operates, describe what the machine was doing at each stage, and open an issue with the capture attached. A capture with good annotations is 60% of an adapter. This is the single most valuable non-code contribution.
 
 ### 4. Deployment reports
 
@@ -43,7 +43,7 @@ Standard but essential. Typos to test coverage, all welcome. Issues labeled `goo
 
 ```bash
 git clone https://github.com/Mohiemen/Open-Machine-Protocol
-cd omp
+cd Open-Machine-Protocol
 python -m venv .venv && source .venv/bin/activate
 pip install -e "./gateway[dev]" -e "./tools[dev]"
 

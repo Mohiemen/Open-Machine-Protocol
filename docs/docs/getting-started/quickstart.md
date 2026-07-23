@@ -13,7 +13,7 @@
 
 ```bash
 git clone https://github.com/Mohiemen/Open-Machine-Protocol
-cd omp
+cd Open-Machine-Protocol
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ./gateway -e ./tools
 ```

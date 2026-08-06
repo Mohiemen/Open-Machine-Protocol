@@ -132,9 +132,13 @@ Ordered by how hard the absence bites:
 2. ~~**MAINTAINERS.md**~~ - **Resolved 2026-07-23**: bootstrap version created
    naming the founder/BDFL; independent conduct contact noted as a tracked
    bootstrap task.
-3. **Normative JSON Schemas + conformance vectors** - both spec documents defer
-   normativity to JSON artifacts that aren't in the bundle. Until they exist, the
-   "prose has a bug if they disagree" rule points at nothing.
+3. ~~**Normative JSON Schemas + conformance vectors**~~ - **Resolved
+   2026-07-23**: `spec/schemas/core/` (6 JSON Schemas, draft 2020-12),
+   `spec/conformance/` (22 core vectors with computed RFC 8785 checksums +
+   consumer cases), and machine-readable profile packages for generic,
+   textile-dyeing, and textile-sewing with their own vectors, plus
+   `spec/profiles/_template/`. All vectors execute green against the schemas.
+   Full consumer NDJSON suites follow with the M2 reference consumer.
 4. ~~**Security architecture / threat model**~~ - **Resolved 2026-07-23**:
    authored at `docs/architecture/05-crosscutting/security-architecture.md`
    (assets, trust boundaries, threat actors, attack paths, design-property

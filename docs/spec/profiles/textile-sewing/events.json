@@ -1,0 +1,127 @@
+{
+  "events": {
+    "needle_break": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "needle_position": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "thread_break": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "thread_path": {
+            "enum": [
+              "needle",
+              "bobbin",
+              "looper",
+              "unknown"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "bobbin_change": {
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "stitch_count_update": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "stitch_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "stitch_count"
+        ]
+      },
+      "notes": "Cumulative stitches; distinct from cycle_complete (cycles)"
+    },
+    "program_change": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "program_ref": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "program_ref"
+        ]
+      }
+    },
+    "speed_setpoint_change": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "target_spm": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "target_spm"
+        ]
+      }
+    },
+    "press_cycle": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "temp_c": {
+            "type": "number"
+          },
+          "duration_s": {
+            "type": "number"
+          },
+          "pressure_kpa": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      },
+      "notes": "One fusing/pressing cycle - the compliance-relevant event for fusing and ironing_press"
+    },
+    "machine_fault": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "subsystem": {
+            "enum": [
+              "motor",
+              "needle_bar",
+              "thread_path",
+              "trimmer",
+              "pneumatics",
+              "sensor",
+              "other"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "subsystem"
+        ]
+      },
+      "notes": "Specializes core error"
+    }
+  }
+}

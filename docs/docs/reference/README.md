@@ -20,7 +20,8 @@ schema rules live in the [core spec](../../spec/omp-schema-v0.1.md).
 | `mapping-files.md` | `generic-modbus` register map and `generic-serial` line profile formats | planned |
 | `exporters.md` | MQTT / REST / OPC UA / CSV exporter configuration | planned |
 
-Until these exist, the interim sources are: envelope - core spec; registry and
-mapping examples - [First Real Machine](../getting-started/first-real-machine.md);
-CLI behavior - the guides that use each command; topics - [Platform
+Until these exist, the interim sources are: envelope - core spec and the
+normative JSON Schemas in `spec/schemas/core/`; registry and mapping examples -
+[First Real Machine](../getting-started/first-real-machine.md); CLI behavior -
+the guides that use each command; topics - [Platform
 Ingestion](../integrations/platform-ingestion.md).

@@ -1,0 +1,10 @@
+{
+  "name": "textile-sewing",
+  "version": "0.1.0",
+  "status": "draft",
+  "core_compatibility": "0.1",
+  "owners": [
+    "textile-sewing working group (forming)"
+  ],
+  "description": "Sewing and garment assembly floors. Prose specification: PROFILE.md in this directory. Draft pending RFC and working-group formation per GOVERNANCE.md 6.2."
+}

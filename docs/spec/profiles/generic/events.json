@@ -1,0 +1,4 @@
+{
+  "events": {},
+  "note": "generic adds no event types - the core vocabulary (run_start, run_end, cycle_complete, start, stop, error, alarm, state_change, maintenance_flag) is the whole vocabulary."
+}

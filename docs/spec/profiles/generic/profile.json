@@ -1,0 +1,10 @@
+{
+  "name": "generic",
+  "version": "0.1.0",
+  "status": "active",
+  "core_compatibility": "0.1",
+  "owners": [
+    "core maintainers"
+  ],
+  "description": "Universal fallback profile - core event vocabulary only. Guarantees any machine can stream conformant data on day one. Gateways MUST ship with generic available (PROFILE-SPEC section 6)."
+}

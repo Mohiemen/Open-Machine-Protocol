@@ -1,0 +1,19 @@
+{
+  "phases": {
+    "{phase_name}": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "{param}": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "{param}"
+        ]
+      }
+    }
+  },
+  "note": "Delete entries and leave {} if your industry is cycle-based rather than phase-based - see textile-sewing for that pattern."
+}

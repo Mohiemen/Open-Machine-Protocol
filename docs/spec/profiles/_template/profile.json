@@ -1,0 +1,10 @@
+{
+  "name": "{profile_name}",
+  "version": "0.1.0",
+  "status": "draft",
+  "core_compatibility": "0.1",
+  "owners": [
+    "{working group members - 2+ industry practitioners required}"
+  ],
+  "description": "{one sentence: which industry / machine family this covers}"
+}

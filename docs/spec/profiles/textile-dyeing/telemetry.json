@@ -1,0 +1,37 @@
+{
+  "channels": {
+    "bath_temp": {
+      "unit": "Cel",
+      "notes": "Primary process variable"
+    },
+    "bath_ph": {
+      "unit": "[pH]",
+      "notes": "Where probe fitted"
+    },
+    "liquor_flow": {
+      "unit": "L/min",
+      "notes": "Jet/soft-flow machines"
+    },
+    "steam_valve_pct": {
+      "unit": "%",
+      "notes": "Heating demand proxy"
+    },
+    "motor_current": {
+      "unit": "A",
+      "notes": "Native or CT clamp"
+    },
+    "water_meter_flow": {
+      "unit": "L/min",
+      "notes": "Submeter where fitted"
+    }
+  },
+  "quantities": [
+    "fabric_kg",
+    "water_l_total",
+    "steam_kg_total",
+    "kwh_total",
+    "chemicals_dosed_count",
+    "additions_count",
+    "rework_flag"
+  ]
+}

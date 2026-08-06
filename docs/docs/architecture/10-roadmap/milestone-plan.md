@@ -45,12 +45,12 @@ is in effect until spec v1.0 or 5 core maintainers from 3 organizations.
 The prose spec declares JSON artifacts normative; until these exist the spec
 cannot be conformance-tested.
 
-- [ ] JSON Schemas for envelope + 5 core schemas (spec/schemas/core/)
-- [ ] Conformance vectors, valid and invalid (spec/conformance/)
-- [ ] Consumer conformance vectors (spec/conformance/consumer/)
-- [ ] generic profile package (manifest, taxonomy, vocabulary)
-- [ ] textile-sewing and textile-dyeing profile packages with vectors
-- [ ] Profile authoring template (spec/profiles/_template/)
+- [x] JSON Schemas for envelope + 5 core schemas (spec/schemas/core/) *(2026-07-23)*
+- [x] Conformance vectors, valid and invalid (spec/conformance/) - 22 core vectors, checksums computed via RFC 8785, all executing green *(2026-07-23)*
+- [x] Consumer conformance vectors (spec/conformance/consumer/) - cases defined; executable NDJSON suites land with the M2 reference consumer *(2026-07-23, partial)*
+- [x] generic profile package (manifest, taxonomy, vocabulary) *(2026-07-23)*
+- [x] textile-sewing and textile-dyeing profile packages with vectors *(2026-07-23)*
+- [x] Profile authoring template (spec/profiles/_template/) *(2026-07-23)*
 
 ### M2 - v0.1 implementation (per architecture doc section 8)
 
@@ -127,3 +127,4 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | Roadmap created; consolidated from README Status, architecture doc sections 8-9, vision doc section 7, and REVIEW.md gap list. M0 documentation items marked complete. |
 | 2026-07-23 | REVIEW.md fix pass: all section-1 conflicts resolved; broken links repaired; MAINTAINERS.md, writing-a-profile guide, RFC template, ADR dir, translations and reference scaffolds created. Split out Bangla quickstart and independent conduct contact as their own items. |
 | 2026-07-23 | M0 near-complete: security architecture/threat model doc authored (05-crosscutting); textile-sewing profile documented (Draft pending RFC); Bangla quickstart translated. Sole remaining M0 item: independent conduct contact (human appointment). |
+| 2026-07-23 | M1 complete: 6 core JSON Schemas (draft 2020-12), core conformance vectors (9 valid / 13 invalid, RFC 8785 checksums via gen_vectors.py), machine-readable profile packages (generic, textile-dyeing, textile-sewing) each with vectors, profile template, consumer cases. All schemas metaschema-valid; all 36 vectors execute green. Consumer NDJSON suites deferred to M2 (need the reference consumer). |

@@ -1,0 +1,13 @@
+{
+  "classes": {
+    "jet_dyeing": "Jet/overflow dyeing machine, rope form",
+    "winch_dyeing": "Winch/beck dyeing machine",
+    "jigger": "Jigger dyeing, open-width",
+    "pad_dyeing": "Continuous padding range",
+    "soft_flow": "Soft-flow/airflow dyeing machine",
+    "washing": "Garment/fabric washing machine",
+    "hydro_extractor": "Centrifugal extraction",
+    "dryer": "Drying machine (tumble, relax, stenter-dry duty)",
+    "other": "Requires make/model identification in machine.json"
+  }
+}

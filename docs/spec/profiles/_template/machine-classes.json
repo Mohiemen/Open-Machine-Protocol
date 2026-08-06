@@ -1,0 +1,6 @@
+{
+  "classes": {
+    "{class_name}": "{one-line definition a stranger can apply}",
+    "other": "Anything else; identify via make/model in machine.json"
+  }
+}

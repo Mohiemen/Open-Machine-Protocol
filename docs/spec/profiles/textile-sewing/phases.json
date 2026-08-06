@@ -1,0 +1,4 @@
+{
+  "phases": {},
+  "note": "Deliberately empty - sewing is cycle-based, not batch-phase-based. Any phases[] entry under this profile is non-conformant. See PROFILE.md section 3."
+}

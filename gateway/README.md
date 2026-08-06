@@ -29,11 +29,21 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
 - **Service commands** - `install-service` (dirs, keypair, registry
   template, systemd unit), `show-identity`, `run` (the daemon: registry ->
   adapters by name -> engine -> exporters, machine announcement on startup,
-  `--sign`), `status`, `dead-letters`.
+  `--sign`), `reload`, `status`, `dead-letters`.
+- **Retention** - `--retention-days` (default 30) and `--max-buffer-bytes`
+  prune delivered envelopes only, never past the slowest exporter's cursor;
+  every prune is logged and shown by `status`.
+- **Resilience** - adapter crashes are isolated and retried with backoff
+  (`--max-crashes` then the machine is marked failed); `--probe-timeout`
+  stops one hung port stalling floor startup.
+- **Hot-reload** - `omp-gateway reload --state-dir …` re-reads the registry
+  in place. The new file is validated fully first and refused if invalid;
+  unchanged machines keep streaming without a seq break.
 
 ## Not here yet
 
-REST/OPC UA/CSV exporters, registry hot-reload, retention pruning, transport
-pool, adapter restart policy/probe timeouts, release signature verification
-(`verify-release`), retrofit OTA. Tracked in the
+REST / OPC UA / CSV exporters (CSV is a
+[good first issue](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
+`tail`, a transport pool for shared RS485 buses, release signature
+verification (`verify-release`), and retrofit OTA. Tracked in the
 [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

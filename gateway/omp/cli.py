@@ -11,6 +11,7 @@ import argparse
 import importlib.util
 import os
 import pathlib
+import signal
 import sys
 import tempfile
 import threading
@@ -155,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
                                "is marked failed (default 30)")
     p_daemon.set_defaults(func=cmd_run)
 
+    p_rl = sub.add_parser("reload",
+                          help="tell a running gateway to re-read its registry")
+    p_rl.add_argument("--state-dir", required=True)
+    p_rl.set_defaults(func=cmd_reload)
+
     p_st = sub.add_parser("status", help="report machines, buffer, dead letters")
     p_st.add_argument("--state-dir", required=True)
     p_st.set_defaults(func=cmd_status)
@@ -276,6 +282,28 @@ def cmd_show_identity(args) -> int:
     return 0
 
 
+def cmd_reload(args) -> int:
+    """Signal a running gateway to re-read its registry (SIGHUP).
+
+    Adding a machine should not drop every other adapter connection on the
+    floor - the deployment guide expects one person to add 10-15 machines a
+    day without restarts.
+    """
+    pidfile = pathlib.Path(args.state_dir) / "gateway.pid"
+    if not pidfile.exists():
+        print(f"no running gateway found ({pidfile} absent)", file=sys.stderr)
+        return 1
+    try:
+        pid = int(pidfile.read_text(encoding="utf-8").strip())
+        os.kill(pid, signal.SIGHUP)
+    except (ValueError, ProcessLookupError, PermissionError) as exc:
+        print(f"could not signal gateway: {exc}", file=sys.stderr)
+        return 1
+    print(f"reload requested (pid {pid}); the gateway validates before "
+          "applying and refuses an invalid registry")
+    return 0
+
+
 def cmd_status(args) -> int:
     store = Store(pathlib.Path(args.state_dir) / "buffer.db")
     snap = store.snapshot()
@@ -334,7 +362,6 @@ def cmd_run(args) -> int:
 
     from .exporters.base import ExporterClosed
 
-    threads = []
     stop_evt = threading.Event()
 
     def drain():
@@ -349,15 +376,17 @@ def cmd_run(args) -> int:
             stop_evt.set()
             return False
         return True
-    for m in registry.get("machines", []):
+    running: dict[str, dict] = {}   # machine_id -> {adapter, thread, spec}
+
+    def start_machine(m: dict) -> bool:
+        """Probe, announce, and supervise one machine. False if it failed."""
         adapter_dir = pathlib.Path(args.adapters_dir) / m["adapter"]
         cls = load_adapter_class(str(adapter_dir))
         adapter = cls(config=m["config"])
         machine_id = m["machine_id"]
-        # machine announcement on startup (spec 7.1)
         try:
-            info = _probe_with_timeout(adapter, m["config"],
-                                       args.probe_timeout)
+            info = _probe_with_timeout(adapter, m["config"], args.probe_timeout)
+            # machine announcement on (re)start - spec 7.1
             engine.process(machine_id, adapter.body(
                 schema="machine",
                 profile=m.get("profile", (cls.supported_profiles or ["generic/0.1"])[0]),
@@ -372,9 +401,9 @@ def cmd_run(args) -> int:
                 },
                 event_ts=now_iso(),
             ))
-        except Exception as exc:  # noqa: BLE001 - machine marked failed, others continue
+        except Exception as exc:  # noqa: BLE001 - this machine fails, others continue
             print(f"# probe failed for {machine_id}: {exc}", file=sys.stderr)
-            continue
+            return False
 
         def emit(body, _mid=machine_id, _adapter=adapter):
             engine.process(_mid, body)
@@ -386,7 +415,58 @@ def cmd_run(args) -> int:
                              args=(adapter, emit, machine_id, stop_evt,
                                    args.max_crashes))
         t.start()
-        threads.append((adapter, t))
+        running[machine_id] = {"adapter": adapter, "thread": t, "spec": m}
+        return True
+
+    def stop_machine(machine_id: str) -> None:
+        entry = running.pop(machine_id, None)
+        if entry:
+            entry["adapter"].stop()
+            entry["thread"].join(timeout=10)
+
+    reload_requested = threading.Event()
+    pidfile = state / "gateway.pid"
+    pidfile.write_text(f"{os.getpid()}\n", encoding="utf-8")
+    try:
+        signal.signal(signal.SIGHUP, lambda *_: reload_requested.set())
+    except (AttributeError, ValueError):   # no SIGHUP, or not the main thread
+        pass
+
+    def apply_reload() -> None:
+        """Validate the new registry FULLY before touching anything.
+
+        The deployment guide promises `reload` "validates before applying,
+        refuses invalid" - an operator pulling a bad registry from git must
+        not take the floor down. Machines whose config is unchanged keep
+        streaming untouched, so their seq continuity is never broken.
+        """
+        try:
+            new = load_registry(args.registry)
+            for m in new.get("machines", []):
+                adapter_dir = pathlib.Path(args.adapters_dir) / m["adapter"]
+                load_adapter_class(str(adapter_dir))   # raises if missing/bad
+        except Exception as exc:  # noqa: BLE001 - keep serving the old config
+            print(f"# reload REFUSED, still running the previous registry: {exc}",
+                  file=sys.stderr)
+            return
+        wanted = {m["machine_id"]: m for m in new.get("machines", [])}
+        added = [mid for mid in wanted if mid not in running]
+        removed = [mid for mid in running if mid not in wanted]
+        changed = [mid for mid, m in wanted.items()
+                   if mid in running and running[mid]["spec"] != m]
+        for mid in removed:
+            stop_machine(mid)
+        for mid in changed:
+            stop_machine(mid)
+            start_machine(wanted[mid])
+        for mid in added:
+            start_machine(wanted[mid])
+        untouched = len(running) - len(added) - len(changed)
+        print(f"# reloaded: +{len(added)} -{len(removed)} ~{len(changed)}, "
+              f"{max(untouched, 0)} untouched", file=sys.stderr)
+
+    for m in registry.get("machines", []):
+        start_machine(m)
 
     drain()
     exporter_names = [e.name for e in exporters]
@@ -400,6 +480,10 @@ def cmd_run(args) -> int:
                 wait = min(wait, max(deadline - time.monotonic(), 0))
             if stop_evt.wait(wait):
                 break
+            if reload_requested.is_set():
+                reload_requested.clear()
+                apply_reload()
+                continue
             if deadline is not None and time.monotonic() >= deadline:
                 break
             result = store.prune(exporter_names,
@@ -410,11 +494,10 @@ def cmd_run(args) -> int:
                       f"{result['reason']}", file=sys.stderr)
     except KeyboardInterrupt:
         pass
-    for adapter, _ in threads:
-        adapter.stop()
-    for _, t in threads:
-        t.join(timeout=10)
+    for machine_id in list(running):
+        stop_machine(machine_id)
     drain()
+    pidfile.unlink(missing_ok=True)
     store.close()
     # if stdout is a closed pipe, Python's exit-time flush raises again -
     # point the fd at /dev/null so the process exits quietly like any other

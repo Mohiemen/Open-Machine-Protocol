@@ -1,2 +1,0 @@
-[console_scripts]
-omp-gateway = omp.cli:main

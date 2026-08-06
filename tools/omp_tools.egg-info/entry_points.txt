@@ -1,3 +1,0 @@
-[console_scripts]
-omp-simulate = omp_tools.simulate:main
-omp-validate = omp_tools.validate:main

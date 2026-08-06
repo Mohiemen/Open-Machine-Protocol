@@ -1,9 +1,0 @@
-jsonschema>=4.18
-PyYAML>=6
-
-[dev]
-pytest>=7
-ruff>=0.4
-
-[mqtt]
-paho-mqtt>=1.6

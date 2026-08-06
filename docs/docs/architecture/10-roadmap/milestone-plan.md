@@ -60,7 +60,7 @@ cannot be conformance-tested.
 - [x] omp-sniff capture tool - serial + stdin capture, annotations, decode view *(2026-07-23; pcap mode still open)*
 - [x] generic-modbus adapter with YAML register mapping - self-contained read-only TCP/RTU framing, on_increment/on_change/stats modes, injected-transport CI path *(2026-07-23; real-hardware soak pending)*
 - [x] generic-serial adapter with line profiles and replay mode *(2026-07-23; real-hardware soak pending)*
-- [ ] retrofit-esp32 CT clamp firmware + hardware docs
+- [~] retrofit-esp32 CT clamp firmware + hardware docs - **draft only** *(2026-07-23)*: firmware source, BOM/wiring, flashing and provisioning docs written to the retrofit guide's spec, plus the gateway-side `retrofit-esp32` adapter (replay-tested, 3 tests). The firmware itself was **never compiled or run** (no ESP32 toolchain available to its author) - it is a starting point, not a deliverable. Hardware validation tracked below.
 - [x] Grafana example dashboards (examples/grafana-dashboards/) - compose stack (Mosquitto + Grafana + MQTT datasource) with provisioned Sewing Line Overview; config-validated, visual verification community-wanted *(2026-07-23)*
 - [x] Platform ingest reference consumer (examples/platform-ingest-reference/) - six-stage pipeline, integrity alarms, gap tracking, SQLite *(2026-07-23)*
 
@@ -70,7 +70,7 @@ Per README Status and vision doc section 7:
 
 - [ ] Published spec with conformance vectors
 - [ ] Working gateway + three adapters (generic-modbus, generic-serial, retrofit-esp32)
-- [ ] One retrofit design validated on real hardware
+- [ ] One retrofit design validated on real hardware - first steps: compile the draft firmware, fix what breaks, verify the ADC/RMS calibration against a reference meter, then a week of soak. **The single highest-value contribution available right now.**
 - [ ] Two end-to-end reference deployments - one real sewing machine, one Modbus PLC, both streaming signed conformant data to Grafana and one platform ingest example
 
 ---
@@ -113,6 +113,8 @@ Per README Status and vision doc section 7:
 ## How to Update This File
 
 1. **Completing an item** - check it off with the date: `- [x] ... *(YYYY-MM-DD)*`.
+   Use `- [~]` for work that exists but is not validated (drafts, untested
+   firmware); a `[~]` never counts toward a milestone being met.
 2. **Adding work** - add it under the right milestone; if it changes scope
    meaningfully, note why in the changelog below.
 3. **Dropping or superseding** - strike through (`~~item~~`) with a one-line
@@ -133,3 +135,4 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M2 Phase 2: generic-serial (line profiles, stats aggregation, replay mode) and generic-modbus (YAML register maps, read-only-by-construction TCP/RTU framing, injected transport) adapters; omp-sniff (serial/stdin capture with annotations, decode view); platform-ingest-reference consumer (all six guide stages, integrity alarms, gap reporting). 71 tests green. Still open in M2: ESP32 firmware, Grafana dashboards, gateway service management, omp-sniff pcap. |
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
+| 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |

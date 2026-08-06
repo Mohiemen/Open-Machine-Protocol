@@ -43,8 +43,11 @@ Full walkthrough: [Quickstart](docs/docs/getting-started/quickstart.md)
 |---|---|
 | [docs/](docs/) | Full documentation - project README, vision, spec prose, guides, governance |
 | [docs/spec/](docs/spec/) | **Normative artifacts** - JSON Schemas, conformance vectors, profile packages |
-| [tools/](tools/) | `omp-validate`, `omp-simulate` |
-| [gateway/](gateway/) | Edge gateway core - adapter API, validation, buffer, exporters |
+| [tools/](tools/) | `omp-validate`, `omp-simulate`, `omp-sniff` |
+| [gateway/](gateway/) | Edge gateway core - adapter API, validation, buffer, signing, exporters |
+| [adapters/](adapters/) | `generic-modbus`, `generic-serial`, `retrofit-esp32` |
+| [retrofit/](retrofit/) | ESP32 kit firmware and hardware docs (draft - see its README) |
+| [examples/](examples/) | Grafana dashboards, platform ingest reference consumer |
 | [Roadmap](docs/docs/architecture/10-roadmap/milestone-plan.md) | Living milestone plan - updated with every change |
 
 **Status**: pre-1.0, under active development. Spec v0.1 draft with executable

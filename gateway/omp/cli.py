@@ -14,6 +14,7 @@ import pathlib
 import sys
 import tempfile
 import threading
+import time
 
 import yaml
 
@@ -138,6 +139,20 @@ def main(argv: list[str] | None = None) -> int:
     p_daemon.add_argument("--duration", type=float, default=None,
                           help="run for N seconds then exit (default: forever)")
     p_daemon.add_argument("--spec-dir", default=None)
+    p_daemon.add_argument("--retention-days", type=float, default=30,
+                          help="prune delivered envelopes older than this "
+                               "(default 30, per the glossary)")
+    p_daemon.add_argument("--max-buffer-bytes", type=int, default=None,
+                          help="also prune delivered envelopes when the buffer "
+                               "database exceeds this size")
+    p_daemon.add_argument("--prune-interval", type=float, default=3600,
+                          help="seconds between retention passes (default 1h)")
+    p_daemon.add_argument("--max-crashes", type=int, default=5,
+                          help="mark a machine failed after this many adapter "
+                               "crashes (default 5)")
+    p_daemon.add_argument("--probe-timeout", type=float, default=30,
+                          help="seconds a probe() may take before the machine "
+                               "is marked failed (default 30)")
     p_daemon.set_defaults(func=cmd_run)
 
     p_st = sub.add_parser("status", help="report machines, buffer, dead letters")
@@ -151,6 +166,61 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return args.func(args)
+
+
+def _supervise(adapter, emit, machine_id: str, stop_evt, max_crashes: int) -> None:
+    """Adapter restart policy (Adapter Plugin API s6).
+
+    An exception escaping start() is the adapter's failure, never the
+    gateway's: catch it, count it in health, back off exponentially (1 s to
+    5 min), and retry. After `max_crashes` the machine is marked `failed` and
+    left alone - a crash-looping adapter that keeps re-opening a serial port
+    is worse than one that stops and says so.
+    """
+    crashes = 0
+    while not stop_evt.is_set():
+        try:
+            adapter.start(emit)
+            return                      # returned cleanly: it is done
+        except Exception as exc:        # noqa: BLE001 - isolation is the point
+            crashes += 1
+            if crashes >= max_crashes:
+                adapter._mark_failed(
+                    f"stopped after {crashes} crashes; last: {exc}")
+                print(f"# {machine_id}: adapter failed after {crashes} crashes "
+                      f"({exc}) - not retrying", file=sys.stderr)
+                return
+            adapter._mark_disconnected(f"crash {crashes}: {exc}")
+            delay = adapter.backoff()
+            print(f"# {machine_id}: adapter crashed ({exc}); retry in {delay}s",
+                  file=sys.stderr)
+            if stop_evt.wait(delay):
+                return
+
+
+def _probe_with_timeout(adapter, config: dict, timeout_s: float):
+    """probe() MUST complete or raise within the probe timeout (API s2).
+
+    A probe that hangs on a dead serial port would otherwise stall startup for
+    every other machine on the floor, so it runs on its own thread and the
+    machine is marked failed if it overruns.
+    """
+    result: dict = {}
+
+    def run():
+        try:
+            result["info"] = adapter.probe(config)
+        except Exception as exc:        # noqa: BLE001
+            result["error"] = exc
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(timeout_s)
+    if t.is_alive():
+        raise TimeoutError(f"probe did not return within {timeout_s}s")
+    if "error" in result:
+        raise result["error"]
+    return result["info"]
 
 
 SYSTEMD_UNIT = """\
@@ -210,11 +280,15 @@ def cmd_status(args) -> int:
     store = Store(pathlib.Path(args.state_dir) / "buffer.db")
     snap = store.snapshot()
     print(f"machines: {len(snap['machines'])}  buffered: {snap['buffered']}  "
-          f"dead_letters: {snap['dead_letters']}")
+          f"dead_letters: {snap['dead_letters']}  "
+          f"buffer_db: {snap['db_bytes'] // 1024} KiB")
     for machine_id, seq in sorted(snap["machines"].items()):
         print(f"  {machine_id}  seq {seq}")
     for exporter, rowid in sorted(snap["cursors"].items()):
         print(f"  exporter {exporter} at row {rowid}")
+    for pr in snap["recent_prunes"]:
+        print(f"  pruned {pr['rows']} envelope(s) at {pr['pruned_at']} "
+              f"({pr['reason']})")
     store.close()
     return 0
 
@@ -282,7 +356,8 @@ def cmd_run(args) -> int:
         machine_id = m["machine_id"]
         # machine announcement on startup (spec 7.1)
         try:
-            info = adapter.probe(m["config"])
+            info = _probe_with_timeout(adapter, m["config"],
+                                       args.probe_timeout)
             engine.process(machine_id, adapter.body(
                 schema="machine",
                 profile=m.get("profile", (cls.supported_profiles or ["generic/0.1"])[0]),
@@ -306,14 +381,33 @@ def cmd_run(args) -> int:
             if not drain():
                 _adapter.stop()   # destination gone; wind this adapter down
 
-        t = threading.Thread(target=adapter.start, args=(emit,), daemon=True,
-                             name=f"adapter-{machine_id}")
+        t = threading.Thread(target=_supervise, daemon=True,
+                             name=f"adapter-{machine_id}",
+                             args=(adapter, emit, machine_id, stop_evt,
+                                   args.max_crashes))
         t.start()
         threads.append((adapter, t))
 
     drain()
+    exporter_names = [e.name for e in exporters]
     try:
-        stop_evt.wait(args.duration)
+        # tick so retention runs on a long-lived gateway; `--duration` runs
+        # (tests, demos) fall out of the loop on the first pass
+        deadline = None if args.duration is None else time.monotonic() + args.duration
+        while not stop_evt.is_set():
+            wait = args.prune_interval
+            if deadline is not None:
+                wait = min(wait, max(deadline - time.monotonic(), 0))
+            if stop_evt.wait(wait):
+                break
+            if deadline is not None and time.monotonic() >= deadline:
+                break
+            result = store.prune(exporter_names,
+                                 retention_days=args.retention_days,
+                                 max_bytes=args.max_buffer_bytes)
+            if result["pruned"]:
+                print(f"# pruned {result['pruned']} delivered envelope(s): "
+                      f"{result['reason']}", file=sys.stderr)
     except KeyboardInterrupt:
         pass
     for adapter, _ in threads:

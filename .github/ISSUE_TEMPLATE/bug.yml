@@ -1,0 +1,40 @@
+name: Bug
+description: Something in the gateway, tools, adapters, or spec behaves wrongly.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for vulnerabilities** — gateways sit inside factory OT networks.
+        Use private reporting (see SECURITY.md). When unsure whether something
+        is security-relevant, treat it as if it is.
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      placeholder: "omp-validate / gateway core / generic-modbus / spec"
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: Exact command and what happened
+      description: Include your OS and the exact command. Annotated detail gets faster answers than politeness.
+      render: shell
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations: {required: true}
+  - type: textarea
+    id: envelopes
+    attributes:
+      label: Relevant envelopes or dead letters
+      description: "`omp-gateway dead-letters` output, or the envelope that misbehaved. Scrub production data first."
+      render: json

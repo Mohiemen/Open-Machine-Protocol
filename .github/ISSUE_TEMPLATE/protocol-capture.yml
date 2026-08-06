@@ -1,0 +1,61 @@
+name: Protocol capture
+description: Traffic from a machine we don't support yet. The most valuable contribution you can make without writing code.
+title: "[capture] <vendor> <model>"
+labels: ["protocol-capture", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A well-annotated capture is about 60% of an adapter. You do not need to
+        decode anything — collective decoding in the issue thread genuinely works.
+
+        **Before capturing**, read the
+        [legal hygiene guide](https://github.com/Mohiemen/Open-Machine-Protocol/blob/main/docs/docs/guides/reverse-engineering-protocols.md).
+        It is a 10-minute read and it protects you as much as the project.
+  - type: input
+    id: machine
+    attributes:
+      label: Machine
+      placeholder: "Juki DDL-9000C, Sedo Treepoint TC-3000, unknown jigger controller…"
+    validations: {required: true}
+  - type: input
+    id: interface
+    attributes:
+      label: Physical interface
+      placeholder: "RS485 2-wire 9600 8N1 / Ethernet / RS232 DB9"
+    validations: {required: true}
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Capture hygiene
+      options:
+        - label: I lawfully operate this machine, or have the owner's written permission
+          required: true
+        - label: Capture is passive, or uses only read/poll frames — no state-changing commands
+          required: true
+        - label: No vendor firmware, decompiled code, or NDA'd documentation is included
+          required: true
+        - label: I scrubbed serial numbers and production data from what I'm attaching
+          required: true
+  - type: textarea
+    id: annotations
+    attributes:
+      label: Annotations
+      description: What the machine was doing, with times. This is what turns bytes into meaning.
+      placeholder: |
+        14:02 machine idle
+        14:05 operator started program 12
+        14:31 heat phase began (panel showed 60C target)
+        14:47 I induced a thread break
+    validations: {required: true}
+  - type: textarea
+    id: capture
+    attributes:
+      label: Capture
+      description: Attach the file (drag and drop). `omp-sniff --stdin` / `--serial` output drops straight into adapter fixtures.
+    validations: {required: true}
+  - type: textarea
+    id: docs
+    attributes:
+      label: Vendor documentation
+      description: Publicly published manuals may be cited. Leaked or NDA'd material may not — say so if you have none.

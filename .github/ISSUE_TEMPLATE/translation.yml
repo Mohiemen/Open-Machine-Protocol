@@ -1,0 +1,34 @@
+name: Translation
+description: Claim a document to translate, or report a translation problem.
+title: "[i18n] <lang>: <document>"
+labels: ["translation", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation in the languages of manufacturing is a first-class
+        deliverable, not an afterthought — a quickstart an engineer can read
+        converts directly into deployments. Bangla leads; Vietnamese, Hindi,
+        Turkish, and Bahasa are equally welcome, as is any language a factory
+        floor speaks.
+
+        **Claim a file before starting** so effort isn't duplicated.
+  - type: input
+    id: lang
+    attributes:
+      label: Language
+      placeholder: "bn / vi / hi / tr / id"
+    validations: {required: true}
+  - type: input
+    id: doc
+    attributes:
+      label: Document
+      placeholder: "docs/getting-started/first-real-machine.md"
+    validations: {required: true}
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Conventions
+      options:
+        - label: I'll translate the prose and keep commands, identifiers, and field names in English (they're code)
+        - label: I understand rough-but-useful beats polished-but-late — native-speaker review happens in the PR

@@ -1,0 +1,18 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or design discussion
+    url: https://github.com/Mohiemen/Open-Machine-Protocol/discussions
+    about: >-
+      Design questions, "is this normal", identification-by-photo of a mystery
+      controller port, or anything you're unsure where to file. Discussions is
+      always safe.
+  - name: Security vulnerability
+    url: https://github.com/Mohiemen/Open-Machine-Protocol/security/advisories/new
+    about: >-
+      Do NOT open a public issue. Gateways sit inside factory OT networks, so
+      use private reporting.
+  - name: Specification change (RFC)
+    url: https://github.com/Mohiemen/Open-Machine-Protocol/blob/main/docs/docs/community/rfc-process.md
+    about: >-
+      Core schema, envelope, new profile, or conformance changes need an RFC
+      pull request rather than an issue.

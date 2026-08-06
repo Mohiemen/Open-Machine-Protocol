@@ -1,0 +1,48 @@
+name: Adapter request
+description: A machine family OMP doesn't support yet.
+title: "[adapter] <vendor> <family>"
+labels: ["adapter", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **First check whether you already have an adapter:** if the machine
+        speaks Modbus, `generic-modbus` covers it with a YAML register map and
+        no code. If it prints parseable serial lines, `generic-serial` does.
+        See [Your First Real Machine](https://github.com/Mohiemen/Open-Machine-Protocol/blob/main/docs/docs/getting-started/first-real-machine.md).
+  - type: input
+    id: machines
+    attributes:
+      label: Machines covered
+      placeholder: "Fanuc 0i / 30i CNC controllers"
+    validations: {required: true}
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol status
+      options:
+        - Documented by the vendor (public manual)
+        - Documented but under NDA (we cannot use this — say so and stop)
+        - Undocumented, needs reverse engineering
+        - Unknown
+    validations: {required: true}
+  - type: dropdown
+    id: access
+    attributes:
+      label: Do you have access to one of these machines?
+      options:
+        - "Yes, and I can capture traffic"
+        - "Yes, but I can't capture"
+        - "No"
+    validations: {required: true}
+  - type: textarea
+    id: profile
+    attributes:
+      label: Which profile would it emit?
+      description: "generic, textile-sewing, textile-dyeing — or does this need a new profile (which needs an RFC and 2+ industry practitioners)?"
+  - type: markdown
+    attributes:
+      value: |
+        If you have machine access but can't write the adapter, please file a
+        **protocol capture** instead — that's the highest-value contribution
+        available and someone else can finish it.

@@ -1,0 +1,43 @@
+name: Deployment report
+description: You ran OMP in a real factory. Failures are more valuable than successes.
+title: "[deployment] <site type>, <machine count> machines"
+labels: ["deployment-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Redact anything commercially sensitive — machine mix and failure modes
+        matter, your customer names do not.
+  - type: textarea
+    id: fleet
+    attributes:
+      label: Machine mix and scale
+      placeholder: "42 lockstitch + 8 overlock (ESP32 optical counters), 3 jet dyeing (Modbus TCP), 1 gateway on a Pi 5"
+    validations: {required: true}
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Environment
+      description: Power stability, network, heat, dust, humidity — the things the deployment guide warns about.
+    validations: {required: true}
+  - type: textarea
+    id: broke
+    attributes:
+      label: What broke
+      description: The most useful section. Cable faults, brownouts, adapters wedging, dead letters, seq resets — whatever actually happened.
+    validations: {required: true}
+  - type: textarea
+    id: surprised
+    attributes:
+      label: What surprised you
+      description: Things the docs didn't warn you about. These become Gotchas.
+  - type: input
+    id: time
+    attributes:
+      label: Time from unboxing to first machine streaming
+      placeholder: "half a day, most of it finding the RS485 terminals"
+  - type: textarea
+    id: docgaps
+    attributes:
+      label: Where the docs failed you
+      description: If any part was harder than it needed to be for a working engineer, that's a bug in the docs. Name it.

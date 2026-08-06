@@ -5,7 +5,7 @@
 | **Status** | Draft |
 | **Location** | docs/security/hardening-guide.md |
 | **Audience** | Whoever connects a gateway's egress to anything |
-| **Companions** | [Factory Deployment](../guides/factory-deployment.md) (topology), SECURITY.md (reporting), architecture 05-crosscutting/security-architecture.md (threat model rationale) |
+| **Companions** | [Factory Deployment](../guides/factory-deployment.md) (topology), SECURITY.md (reporting), [Security Architecture](../architecture/05-crosscutting/security-architecture.md) (threat model rationale) |
 
 This guide is the deployable checklist derived from the threat model. Items are marked **[Required]** or **[Recommended]**. A deployment skipping Required items should be treated as exposed.
 

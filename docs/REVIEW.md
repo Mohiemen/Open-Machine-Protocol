@@ -135,10 +135,11 @@ Ordered by how hard the absence bites:
 3. **Normative JSON Schemas + conformance vectors** - both spec documents defer
    normativity to JSON artifacts that aren't in the bundle. Until they exist, the
    "prose has a bug if they disagree" rule points at nothing.
-4. **Security architecture / threat model** (`05-crosscutting/security-architecture.md`) -
-   the hardening guide calls itself "the deployable checklist derived from the
-   threat model", but the threat model doc is absent (section 1 of the guide is a
-   4-line summary).
+4. ~~**Security architecture / threat model**~~ - **Resolved 2026-07-23**:
+   authored at `docs/architecture/05-crosscutting/security-architecture.md`
+   (assets, trust boundaries, threat actors, attack paths, design-property
+   mapping, explicit non-goals); hardening guide companion reference now a
+   working link.
 5. ~~**Milestone plan / roadmap** (`10-roadmap/milestone-plan.md`)~~ -
    **Resolved 2026-07-23**: created as a living roadmap consolidating the
    scattered roadmap content (architecture doc sections 8/9, README Status,
@@ -154,10 +155,12 @@ Ordered by how hard the absence bites:
    with index and ADR format. Remaining architecture numbering (01-03, 05,
    07-09) stays absent until those docs are written - tracked in the milestone
    plan.
-10. **textile-sewing profile documentation** - shipped as 🟢 v0.1 in README and
-    used in every example, but unlike textile-dyeing (worked example in
-    PROFILE-SPEC section 8) its machine classes, events, and phases are defined
-    nowhere in the bundle.
+10. ~~**textile-sewing profile documentation**~~ - **Resolved 2026-07-23**:
+    authored at `spec/profiles/textile-sewing/PROFILE.md` (classes, events,
+    deliberate no-phases decision, telemetry, quantities, Bangla glossary,
+    conformance vector descriptions). Marked Draft pending its RFC and
+    working group per GOVERNANCE 6.2; machine-readable JSON artifacts remain
+    an M1 item.
 11. **Governance/contact details** - GOVERNANCE names no actual core maintainers
     and SECURITY.md defers to "the address listed on the repository's security
     tab"; fine pre-launch, but worth an explicit "bootstrap status" note.

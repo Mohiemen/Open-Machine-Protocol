@@ -31,7 +31,7 @@ file. Untranslated files are simply absent - no placeholder files.
 
 | Language | getting-started | guides | reference |
 |---|---|---|---|
-| bn | not started - **help wanted** | - | - |
+| bn | [quickstart](bn/getting-started/quickstart.md) done; first-real-machine and FAQ **help wanted** | - | - |
 
 ## Contributing a Translation
 

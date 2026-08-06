@@ -4,7 +4,6 @@ import json
 from contextlib import redirect_stdout
 
 import pytest
-
 from omp_tools.simulate import main as simulate_main
 from omp_tools.specload import load_spec
 from omp_tools.validate import validate_envelope

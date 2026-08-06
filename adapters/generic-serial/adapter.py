@@ -12,9 +12,7 @@ import threading
 import time
 
 import yaml
-
 from omp.adapter import AdapterBase, Emit, MachineInfo, now_iso
-
 from protocol import LineProfile, StatsAggregator, parse_line
 
 

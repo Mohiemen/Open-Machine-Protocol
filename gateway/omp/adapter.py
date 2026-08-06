@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import datetime as dt
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 
 def now_iso() -> str:

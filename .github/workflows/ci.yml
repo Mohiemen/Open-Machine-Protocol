@@ -16,9 +16,12 @@ jobs:
       - name: Install
         run: |
           pip install -e ./gateway -e ./tools
-          pip install pytest ruff
+          # ruff is pinned: an unpinned linter turns every upstream release
+          # into a surprise red build on an unrelated PR. Bump deliberately.
+          pip install pytest 'ruff==0.15.8'
       - name: Lint
-        run: ruff check gateway/ tools/ adapters/ examples/
+        # rule set lives in ruff.toml so local and CI agree
+        run: ruff check gateway/ tools/ adapters/ examples/ .claude/
       - name: Tests (includes conformance vectors)
         run: pytest tools/tests gateway/tests -q
       - name: Drive the app end to end

@@ -11,7 +11,6 @@ from omp.cli import main as cli_main
 from omp.core.engine import Engine
 from omp.core.keys import GatewayKey, verify_signature
 from omp.core.store import Store
-
 from omp_tools.sigverify import verify_envelope_sig
 from omp_tools.specload import load_spec
 from omp_tools.validate import validate_envelope

@@ -14,11 +14,9 @@ import pathlib
 import threading
 import time
 
-import yaml
-
-from omp.adapter import AdapterBase, Emit, MachineInfo, now_iso
-
 import protocol as mb
+import yaml
+from omp.adapter import AdapterBase, Emit, MachineInfo, now_iso
 from protocol import decode_value, reg_count, resolve_address
 
 # reuse the serial adapter's aggregator shape locally (kept self-contained)

@@ -1,6 +1,5 @@
 """Registry validation and MQTT topic construction (fake client)."""
 import pytest
-
 from omp.core.registry import RegistryError, load_registry
 from omp.exporters.mqtt import MqttExporter
 

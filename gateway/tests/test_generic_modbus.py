@@ -5,7 +5,6 @@ import threading
 import time
 
 import pytest
-
 from omp.cli import load_adapter_class
 from omp.core.engine import Engine
 from omp.core.store import Store

@@ -18,7 +18,7 @@ class LineProfile:
     _compiled: list[tuple[re.Pattern, dict]] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "LineProfile":
+    def from_dict(cls, data: dict) -> LineProfile:
         lp = cls(
             profile=data["profile"],
             machine_class=data["machine_class"],

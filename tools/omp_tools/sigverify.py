@@ -11,7 +11,7 @@ import base64
 
 
 def sig_input(gateway_id: str, machine_id: str, seq: int, checksum: str) -> bytes:
-    return f"{gateway_id}\n{machine_id}\n{seq}\n{checksum}".encode("utf-8")
+    return f"{gateway_id}\n{machine_id}\n{seq}\n{checksum}".encode()
 
 
 def verify_envelope_sig(envelope: dict, pubkey_b64: str) -> bool:

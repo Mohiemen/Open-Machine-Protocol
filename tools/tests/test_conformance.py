@@ -2,7 +2,6 @@
 import json
 
 import pytest
-
 from omp_tools.specload import load_spec
 from omp_tools.validate import validate_envelope
 

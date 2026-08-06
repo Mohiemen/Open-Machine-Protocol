@@ -30,7 +30,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 
 def sig_input(gateway_id: str, machine_id: str, seq: int, checksum: str) -> bytes:
-    return f"{gateway_id}\n{machine_id}\n{seq}\n{checksum}".encode("utf-8")
+    return f"{gateway_id}\n{machine_id}\n{seq}\n{checksum}".encode()
 
 
 class GatewayKey:
@@ -39,7 +39,7 @@ class GatewayKey:
 
     # -- creation / loading --------------------------------------------
     @classmethod
-    def generate(cls, path: str | pathlib.Path) -> "GatewayKey":
+    def generate(cls, path: str | pathlib.Path) -> GatewayKey:
         path = pathlib.Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         key = Ed25519PrivateKey.generate()
@@ -54,7 +54,7 @@ class GatewayKey:
         return cls(key)
 
     @classmethod
-    def load(cls, path: str | pathlib.Path) -> "GatewayKey":
+    def load(cls, path: str | pathlib.Path) -> GatewayKey:
         pem = pathlib.Path(path).read_bytes()
         key = serialization.load_pem_private_key(pem, password=None)
         if not isinstance(key, Ed25519PrivateKey):
@@ -62,7 +62,7 @@ class GatewayKey:
         return cls(key)
 
     @classmethod
-    def load_or_generate(cls, path: str | pathlib.Path) -> "GatewayKey":
+    def load_or_generate(cls, path: str | pathlib.Path) -> GatewayKey:
         return cls.load(path) if pathlib.Path(path).exists() else cls.generate(path)
 
     # -- use ------------------------------------------------------------

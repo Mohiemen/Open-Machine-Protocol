@@ -87,7 +87,6 @@ def test_closed_stdout_pipe_does_not_ack_undelivered(tmp_path):
     """`omp-gateway run | head` is ordinary usage: it must not traceback, and
     it must not advance the cursor past an envelope nobody received."""
     import pytest
-
     from omp.exporters.base import ExporterClosed, StdoutExporter
 
     store = Store(tmp_path / "b.db")

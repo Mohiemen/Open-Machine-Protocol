@@ -181,8 +181,8 @@ class Simulator:
             ("hold", 0.35, lambda: {"temp_c": 60, "duration_min": 45}),
             ("cool", 0.10, lambda: {"from_c": 60, "to_c": 40, "gradient_c_per_min": 2}),
             ("rinse", 0.20, lambda: {"cycles": 2, "temp_c": 40}),
-            ("drain", 0.05, lambda: {}),
-            ("unload", 0.10, lambda: {}),
+            ("drain", 0.05, dict),
+            ("unload", 0.10, dict),
         ]
         phases = []
         temp = 30
@@ -340,7 +340,7 @@ def _make_sink(args):
     except ImportError:
         print("MQTT export needs paho-mqtt: pip install 'omp-tools[mqtt]'",
               file=sys.stderr)
-        raise SystemExit(2)
+        raise SystemExit(2) from None   # the message above is the whole story
     client = mqtt.Client()
     client.connect(m.group(1), int(m.group(2) or 1883))
     client.loop_start()

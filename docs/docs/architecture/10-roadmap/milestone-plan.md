@@ -135,7 +135,13 @@ outrank new features.
 
 ### The sequence
 
-1. **Adapter transport pool (`self.transport(...)`)** - promised by
+1. ~~**Adapter transport pool (`self.transport(...)`)**~~ - **done 2026-08-06**:
+   `omp/core/transports.py` (TransportPool + SharedTransport), `self.transport()`
+   and `release_transports()` on AdapterBase, generic-modbus using it for both
+   RTU and TCP, one pool shared per daemon, and the API doc now carries the
+   concrete contract instead of only naming the helper. The interleaving test
+   has a negative control: the same workload without the pool interleaves 29 of
+   30 transactions, with it 0. Originally promised by
    [Adapter Plugin API s4](../04-interfaces/adapter-plugin-api.md): "shared
    transports are managed via the gateway's transport pool so two instances
    can share one RS485 line safely". It does not exist, so today two machines
@@ -230,6 +236,7 @@ next contributor's PR gets no check. Fix before the queue above.
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
 | 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
+| 2026-08-06 | Queue item 1 done: the adapter transport pool exists, so several machines on one RS485 pair (or one Modbus TCP gateway) share a link and their transactions serialize. The unit of exclusion is the whole request/response round trip, because splitting it is what makes unit 1 read unit 2's reply - a failure that shows up as random CRC errors on real hardware. Verified with a negative control, not just a passing test. 119 tests green. |
 | 2026-08-06 | Added the Unblocked Work Queue after sweeping the docs against the implementation: four capabilities were documented as existing but never built (`tail`, `audit-host`, `verify-release`, the adapter transport pool). Sequenced them, recorded which unblocked items stay reserved for first-time contributors, and flagged that CI is currently not running - which outranks the whole queue. |
 | 2026-08-06 | Registry hot-reload ([#10](https://github.com/Mohiemen/Open-Machine-Protocol/issues/10)): `omp-gateway reload` signals a running gateway over SIGHUP; the new registry is validated in full - including that every named adapter loads - BEFORE anything is touched, so an operator pulling a bad file from git gets a refusal and an unchanged floor rather than an outage. Machines whose config is byte-identical are left running, so their seq continuity is never broken. Verified end to end against a live daemon. 113 tests green. |
 | 2026-08-06 | Track C (partial): retention pruning that can never outrun delivery - it prunes only past the SLOWEST configured exporter's cursor, so a stalled exporter fills the disk (loud) rather than losing evidence (silent); a removed exporter's stale cursor cannot pin the buffer forever; every prune is logged and shown in `status`. Plus the adapter restart policy from API s6 (crash isolation, exponential backoff, machine marked failed after --max-crashes) and probe timeouts, so one hung serial port cannot stall floor startup. CSV exporter deliberately left for [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) as a good-first-issue. 110 tests green. |

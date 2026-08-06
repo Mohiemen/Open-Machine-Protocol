@@ -64,32 +64,64 @@ class Adapter(AdapterBase):
         )
 
     def _transport(self):
-        """Returns a callable(request_bytes) -> response_bytes."""
+        """Returns a callable(request_bytes) -> response_bytes.
+
+        Real links go through the gateway's transport pool, keyed by the
+        physical link, so several machines on one RS485 bus (or one Modbus
+        TCP gateway) share it and their transactions never interleave. Each
+        call below does write-then-read inside a single `exchange()`, which
+        is what keeps unit 1's reply from landing in unit 2's read.
+        """
         if callable(self.config.get("transport")):
-            return self.config["transport"]
+            return self.config["transport"]        # injected: tests, fixtures
+
+        timeout_s = self.config.get("timeout_ms", 2000) / 1000
         if "host" in self.config:  # pragma: no cover - hardware
             import socket
 
-            sock = socket.create_connection(
-                (self.config["host"], self.config.get("tcp_port", 502)),
-                timeout=self.config.get("timeout_ms", 2000) / 1000,
-            )
+            host = self.config["host"]
+            tcp_port = self.config.get("tcp_port", 502)
+            key = f"modbus-tcp://{host}:{tcp_port}"
+
+            def open_socket():
+                return socket.create_connection((host, tcp_port), timeout=timeout_s)
+
+            link = self.transport(key, open_socket)
 
             def tcp(request: bytes) -> bytes:
-                sock.sendall(request)
-                return sock.recv(260)
+                def txn(sock):
+                    sock.sendall(request)
+                    return sock.recv(260)
+                try:
+                    return link.exchange(txn)
+                except OSError:
+                    link.reset()                   # neighbours reopen on demand
+                    raise
 
             return tcp
+
         # pragma: no cover - hardware
         import serial
 
-        port = serial.Serial(self.config["port"], self.config.get("baud", 9600),
-                             timeout=self.config.get("timeout_ms", 2000) / 1000)
+        dev = self.config["port"]
+        baud = self.config.get("baud", 9600)
+        key = f"modbus-rtu://{dev}"
+
+        def open_port():
+            return serial.Serial(dev, baud, timeout=timeout_s)
+
+        link = self.transport(key, open_port)
 
         def rtu(request: bytes) -> bytes:
-            port.reset_input_buffer()
-            port.write(request)
-            return port.read(256)
+            def txn(port):
+                port.reset_input_buffer()
+                port.write(request)
+                return port.read(256)
+            try:
+                return link.exchange(txn)
+            except OSError:
+                link.reset()
+                raise
 
         return rtu
 

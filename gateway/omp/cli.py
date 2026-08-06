@@ -376,13 +376,16 @@ def cmd_run(args) -> int:
             stop_evt.set()
             return False
         return True
+    from .core.transports import TransportPool
+
+    pool = TransportPool()          # shared: machines on one bus share a link
     running: dict[str, dict] = {}   # machine_id -> {adapter, thread, spec}
 
     def start_machine(m: dict) -> bool:
         """Probe, announce, and supervise one machine. False if it failed."""
         adapter_dir = pathlib.Path(args.adapters_dir) / m["adapter"]
         cls = load_adapter_class(str(adapter_dir))
-        adapter = cls(config=m["config"])
+        adapter = cls(config=m["config"], transport_pool=pool)
         machine_id = m["machine_id"]
         try:
             info = _probe_with_timeout(adapter, m["config"], args.probe_timeout)
@@ -423,6 +426,7 @@ def cmd_run(args) -> int:
         if entry:
             entry["adapter"].stop()
             entry["thread"].join(timeout=10)
+            entry["adapter"].release_transports()
 
     reload_requested = threading.Event()
     pidfile = state / "gateway.pid"
@@ -497,6 +501,7 @@ def cmd_run(args) -> int:
     for machine_id in list(running):
         stop_machine(machine_id)
     drain()
+    pool.close_all()
     pidfile.unlink(missing_ok=True)
     store.close()
     # if stdout is a closed pipe, Python's exit-time flush raises again -

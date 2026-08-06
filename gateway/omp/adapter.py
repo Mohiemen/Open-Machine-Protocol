@@ -70,12 +70,19 @@ class AdapterBase:
     version: str = "0.0.0"
     supported_profiles: list[str] = []
 
-    def __init__(self, config: dict | None = None, scratch_dir: str | None = None):
+    def __init__(self, config: dict | None = None, scratch_dir: str | None = None,
+                 transport_pool=None):
         self.config: dict = config or {}
         self.scratch_dir = scratch_dir
         self._health_lock = threading.Lock()
         self._health = _HealthState()
         self._backoff_s = 1.0
+        if transport_pool is None:
+            from .core.transports import default_pool
+
+            transport_pool = default_pool
+        self._transport_pool = transport_pool
+        self._held_transports: set[str] = set()
 
     # -- lifecycle ------------------------------------------------------
     def probe(self, config: dict) -> MachineInfo:  # pragma: no cover - abstract
@@ -91,6 +98,32 @@ class AdapterBase:
     def body(self, *, schema: str, profile: str, body: dict,
              event_ts: str | None = None) -> Body:
         return Body(schema=schema, profile=profile, body=body, event_ts=event_ts)
+
+    def transport(self, key: str, factory):
+        """Get the shared link identified by `key`, opening it if needed.
+
+        Key by what is physically shared - the device path for RS485, or
+        host:port - so every adapter on one multi-drop bus gets the same
+        SharedTransport and their transactions serialize:
+
+            link = self.transport(self.config["port"],
+                                  lambda: serial.Serial(port, baud))
+            reply = link.exchange(lambda s: (s.write(req), s.read(256))[1])
+
+        Do the write and the matching read inside one `exchange()`. Splitting
+        them lets another machine's request land between yours and its reply,
+        and each adapter then reads the other's answer.
+        """
+        t = self._transport_pool.get(key, factory)
+        self._held_transports.add(key)
+        return t
+
+    def release_transports(self) -> None:
+        """Let go of every shared link this adapter holds. The gateway calls
+        this after stop(); the link closes once its last user releases it."""
+        for key in list(self._held_transports):
+            self._transport_pool.release(key)
+        self._held_transports.clear()
 
     def _mark_connected(self) -> None:
         with self._health_lock:

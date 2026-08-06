@@ -1,0 +1,12 @@
+{
+  "case": "replay-burst",
+  "description": "After an outage a gateway replays in seq order per machine but interleaved across machines. The end state must equal live delivery - idempotency via the dedup key makes this free.",
+  "note": "Per-machine seq stays ascending; only the cross-machine order changes. A consumer that assumes globally ordered arrival will see phantom gaps.",
+  "expect": {
+    "stored": 78,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {}
+  }
+}

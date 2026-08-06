@@ -1,0 +1,11 @@
+{
+  "case": "duplicate-delivery",
+  "description": "At-least-once delivery guarantees duplicates. An exact redelivery is dropped silently - not stored twice, not alarmed.",
+  "expect": {
+    "stored": 26,
+    "duplicates": 2,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {}
+  }
+}

@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:      # so a run can be requested without an empty commit
+
+# Supersede in-flight runs for the same ref instead of leaving them to be
+# cancelled ambiguously - a "cancelled" run reads like a failure when you are
+# deciding whether a branch is safe to merge.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:

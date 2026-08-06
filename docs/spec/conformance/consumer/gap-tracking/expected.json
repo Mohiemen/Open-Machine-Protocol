@@ -1,0 +1,15 @@
+{
+  "case": "gap-tracking",
+  "description": "A missing seq means missing data. The gap is tracked per machine and propagates as seq_complete:false into anything evidentiary - never hidden.",
+  "expect": {
+    "stored": 25,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {
+      "gw-sim-01/sim-line1-m01": [
+        9
+      ]
+    }
+  }
+}

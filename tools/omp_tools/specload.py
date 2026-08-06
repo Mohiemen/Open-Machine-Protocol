@@ -90,15 +90,25 @@ class Spec:
                 }
 
     # ------------------------------------------------------------------
-    def profile_errors(self, envelope: dict) -> list[str]:
+    def profile_errors(self, envelope: dict,
+                       forward_compatible: bool = False) -> list[str]:
         """Constraints from the declared profile (spec section 8.4:
         a message valid under core but invalid under its profile is invalid).
 
-        Unknown profiles yield no errors here - the profile reference pattern
-        is checked by the envelope schema, and consumers must accept unknown
-        *event types* only under a *known* profile major (spec section 9);
-        a gateway validating a profile it doesn't ship is a config error
-        handled elsewhere.
+        `forward_compatible` selects the *consumer* reading of spec section 9:
+        "Consumers MUST accept unknown profile event types under a known
+        profile major version, treating them as opaque events." Profiles add
+        event types, phases, and channels in MINOR releases, so a consumer
+        running profile 0.1 will legitimately receive 0.2 vocabulary and must
+        not reject it - dropping it is the "hard-coding profiles" mistake the
+        Platform Ingestion guide calls out.
+
+        Gateways validate strictly (the default): they emit against the
+        profile package they ship, so an unknown type there is a bug or a
+        misconfiguration, not forward compatibility.
+
+        Unknown *profiles* yield no errors in either mode - the profile
+        reference pattern is checked by the envelope schema.
         """
         name = envelope["profile"].split("/")[0]
         prof = self.profiles.get(name)
@@ -116,7 +126,7 @@ class Spec:
                     f"payload: {e.message}"
                     for e in validator.iter_errors(body.get("payload", {}))
                 ]
-            else:
+            elif not forward_compatible:
                 errors.append(
                     f"event_type {event_type!r} not in core or profile {name!r}"
                 )
@@ -124,7 +134,8 @@ class Spec:
             for i, phase in enumerate(body.get("phases", [])):
                 pname = phase.get("name")
                 if pname not in prof["phases"]:
-                    errors.append(f"phases[{i}]: {pname!r} not defined by {name!r}")
+                    if not forward_compatible:   # phases are added in minors too
+                        errors.append(f"phases[{i}]: {pname!r} not defined by {name!r}")
                 else:
                     validator = prof["phases"][pname]
                     errors += [

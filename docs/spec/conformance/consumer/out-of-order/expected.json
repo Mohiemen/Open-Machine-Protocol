@@ -1,0 +1,11 @@
+{
+  "case": "out-of-order",
+  "description": "Exporter retries interleave. Arrival order is not seq order; a consumer orders by seq and must not treat late arrivals as gaps or duplicates.",
+  "expect": {
+    "stored": 26,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {}
+  }
+}

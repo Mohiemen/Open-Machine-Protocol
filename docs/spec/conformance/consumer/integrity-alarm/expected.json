@@ -1,0 +1,12 @@
+{
+  "case": "integrity-alarm",
+  "description": "Same (gateway_id, machine_id, seq) with a DIFFERENT checksum is not a duplicate - it is an integrity alarm. Both versions are stored, neither overwrites the other, and it is surfaced loudly.",
+  "note": "The second envelope is internally consistent - its checksum matches its own body. Only the dedup-key collision reveals it. A consumer that upserts on the key would silently accept the rewrite.",
+  "expect": {
+    "stored": 26,
+    "duplicates": 0,
+    "alarms": 1,
+    "quarantined": 0,
+    "gaps": {}
+  }
+}

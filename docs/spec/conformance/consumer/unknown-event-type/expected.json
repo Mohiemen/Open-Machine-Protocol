@@ -1,0 +1,13 @@
+{
+  "case": "unknown-event-type",
+  "description": "Profiles add event types in MINOR releases. Spec s9: a consumer MUST accept unknown event types under a known profile major and treat them as opaque events - log and count them, never drop or crash.",
+  "note": "Dropping this is the 'hard-coding profiles' mistake from the Platform Ingestion guide, and it silently discards real production data.",
+  "expect": {
+    "stored": 27,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {},
+    "unknown_event_types": 1
+  }
+}

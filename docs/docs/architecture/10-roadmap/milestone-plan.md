@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Living document |
 | **Location** | docs/architecture/10-roadmap/milestone-plan.md |
-| **Last updated** | 2026-07-23 |
+| **Last updated** | 2026-08-06 |
 | **Rule** | This file MUST be updated in the same PR as any change that completes, adds, reorders, or invalidates a roadmap item. A milestone is not "achieved" until it is checked off here with a date. Stale roadmaps are bugs - file them like bugs. |
 
 This is the single place where the project's plans and their real status meet.
@@ -46,7 +46,7 @@ effect until spec v1.0 or 5 core maintainers from 3 organizations.
 - [x] Translations scaffold (docs/translations/) *(2026-07-23)* - Bangla quickstart itself still open
 - [x] rfcs/ directory with 0000-template.md; ADR directory (06-decisions/) *(2026-07-23)*
 - [x] Bangla quickstart translation *(2026-07-23)*
-- [ ] Independent conduct contact appointed (MAINTAINERS.md bootstrap note)
+- [ ] Independent conduct contact appointed (MAINTAINERS.md bootstrap note) - [#12](https://github.com/Mohiemen/Open-Machine-Protocol/issues/12)
 
 ### M1 - Normative spec artifacts
 
@@ -62,14 +62,14 @@ cannot be conformance-tested.
 
 ### M2 - v0.1 implementation (per architecture doc section 8)
 
-- [x] Gateway runtime core - registry validation, engine (validate-before-buffer, dead letters, seq persistence), SQLite WAL buffer with exporter cursors, MQTT + stdout exporters, adapter API per the interface doc, `run-once` dev loop *(2026-07-23)*; Ed25519 signing + key management, `run` daemon, `install-service`/`show-identity`/`status`/`dead-letters` *(2026-07-23; REST/OPC UA/CSV exporters, hot-reload, retention pruning, restart policy remain)*
+- [x] Gateway runtime core - registry validation, engine (validate-before-buffer, dead letters, seq persistence), SQLite WAL buffer with exporter cursors, MQTT + stdout exporters, adapter API per the interface doc, `run-once` dev loop *(2026-07-23)*; Ed25519 signing + key management, `run` daemon, `install-service`/`show-identity`/`status`/`dead-letters` *(2026-07-23; REST/OPC UA/CSV exporters - CSV [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4), hot-reload [#10](https://github.com/Mohiemen/Open-Machine-Protocol/issues/10), retention pruning [#9](https://github.com/Mohiemen/Open-Machine-Protocol/issues/9), restart policy remain)*
 - [x] omp-validate CLI (profile-aware) - passes all conformance vectors, wired as pytest + CI *(2026-07-23)*
 - [x] omp-simulate with generic, textile-sewing, textile-dyeing scenarios - chaos mode, MQTT export, seeded reproducibility *(2026-07-23)*
-- [x] omp-sniff capture tool - serial + stdin capture, annotations, decode view *(2026-07-23; pcap mode still open)*
+- [x] omp-sniff capture tool - serial + stdin capture, annotations, decode view *(2026-07-23; pcap mode still open - [#3](https://github.com/Mohiemen/Open-Machine-Protocol/issues/3))*
 - [x] generic-modbus adapter with YAML register mapping - self-contained read-only TCP/RTU framing, on_increment/on_change/stats modes, injected-transport CI path *(2026-07-23; real-hardware soak pending)*
 - [x] generic-serial adapter with line profiles and replay mode *(2026-07-23; real-hardware soak pending)*
-- [~] retrofit-esp32 CT clamp firmware + hardware docs - **draft only** *(2026-07-23)*: firmware source, BOM/wiring, flashing and provisioning docs written to the retrofit guide's spec, plus the gateway-side `retrofit-esp32` adapter (replay-tested, 3 tests). The firmware itself was **never compiled or run** (no ESP32 toolchain available to its author) - it is a starting point, not a deliverable. Hardware validation tracked below.
-- [x] Grafana example dashboards (examples/grafana-dashboards/) - compose stack (Mosquitto + Grafana + MQTT datasource) with provisioned Sewing Line Overview; config-validated, visual verification community-wanted *(2026-07-23)*
+- [~] retrofit-esp32 CT clamp firmware + hardware docs - **draft only** *(2026-07-23)*: firmware source, BOM/wiring, flashing and provisioning docs written to the retrofit guide's spec, plus the gateway-side `retrofit-esp32` adapter (replay-tested, 3 tests). The firmware itself was **never compiled or run** (no ESP32 toolchain available to its author) - it is a starting point, not a deliverable. Hardware validation tracked below - [#2](https://github.com/Mohiemen/Open-Machine-Protocol/issues/2).
+- [x] Grafana example dashboards (examples/grafana-dashboards/) - compose stack (Mosquitto + Grafana + MQTT datasource) with provisioned Sewing Line Overview; config-validated, visual verification community-wanted, [#6](https://github.com/Mohiemen/Open-Machine-Protocol/issues/6) *(2026-07-23)*
 - [x] Platform ingest reference consumer (examples/platform-ingest-reference/) - six-stage pipeline, integrity alarms, gap tracking, SQLite *(2026-07-23)*
 
 ### M3 - v0.1 release gate
@@ -78,7 +78,7 @@ Per README Status and vision doc section 7:
 
 - [ ] Published spec with conformance vectors
 - [ ] Working gateway + three adapters (generic-modbus, generic-serial, retrofit-esp32)
-- [ ] One retrofit design validated on real hardware - first steps: compile the draft firmware, fix what breaks, verify the ADC/RMS calibration against a reference meter, then a week of soak. **The single highest-value contribution available right now.**
+- [ ] One retrofit design validated on real hardware - first steps: compile the draft firmware, fix what breaks, verify the ADC/RMS calibration against a reference meter, then a week of soak. **The single highest-value contribution available right now** - [#2](https://github.com/Mohiemen/Open-Machine-Protocol/issues/2).
 - [ ] Two end-to-end reference deployments - one real sewing machine, one Modbus PLC, both streaming signed conformant data to Grafana and one platform ingest example
 
 ---
@@ -144,4 +144,5 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
 | 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
+| 2026-08-06 | PR #1 merged - the foundation is on main. Contributor on-ramp built: PR and issue templates (protocol capture, deployment report, adapter request, bug, translation), and 11 seeded issues so the good-first-issue links in README/CONTRIBUTING finally resolve. Open roadmap items are now cross-referenced to their tracking issues. |
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |

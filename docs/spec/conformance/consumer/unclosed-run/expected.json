@@ -1,0 +1,13 @@
+{
+  "case": "unclosed-run",
+  "description": "The gateway saw run_start, then power was cut before run_end. The run is held open for a configurable window, then closed as outcome:unknown in the consumer's projection - clearly distinct from a machine-reported outcome.",
+  "note": "A consumer that reports this run as 'completed', or omits it entirely, is misrepresenting what the machine said.",
+  "expect": {
+    "stored": 25,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {},
+    "runs_closed_as_unknown": 1
+  }
+}

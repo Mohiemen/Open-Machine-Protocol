@@ -55,7 +55,7 @@ cannot be conformance-tested.
 
 - [x] JSON Schemas for envelope + 5 core schemas (spec/schemas/core/) *(2026-07-23)*
 - [x] Conformance vectors, valid and invalid (spec/conformance/) - 22 core vectors, checksums computed via RFC 8785, all executing green *(2026-07-23)*
-- [x] Consumer conformance vectors (spec/conformance/consumer/) - cases defined; executable NDJSON suites land with the M2 reference consumer *(2026-07-23, partial)*
+- [x] Consumer conformance vectors (spec/conformance/consumer/) - 8 executable suites (input.ndjson + implementation-agnostic expected.json), reference consumer passes all *(2026-08-06; the partial from 2026-07-23 is now complete)*
 - [x] generic profile package (manifest, taxonomy, vocabulary) *(2026-07-23)*
 - [x] textile-sewing and textile-dyeing profile packages with vectors *(2026-07-23)*
 - [x] Profile authoring template (spec/profiles/_template/) *(2026-07-23)*
@@ -90,7 +90,7 @@ Per README Status and vision doc section 7:
 - [ ] `machining` profile (with MTConnect vocabulary mapping)
 - [ ] `plastics` profile
 - [ ] opcua-client adapter
-- [ ] `omp-validate --audit` (DPP evidence bundle verification, one command)
+- [x] `omp-validate --audit` (DPP evidence bundle verification, one command) - all five checks from DPP guide s4, records_hash, and the s3 citation block; unevaluable checks report null, never true *(2026-08-06)*
 - [ ] First vendor adapters (candidates: juki-janets, sedo-treepoint, setex-secom, fanuc-focas, siemens-s7)
 
 ### v0.3 (planned)
@@ -144,5 +144,6 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
 | 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
+| 2026-08-06 | Track B: `omp-validate --audit` implements the five DPP checks (completeness, integrity, authenticity, consistency, conformance) and emits the citation block; 8 executable consumer conformance suites close M1's partial item. Two real bugs found by building them: the reference consumer rejected unknown event types from newer profile minors (violating spec s9 and the guide's own 'hard-coding profiles' warning), and omp-simulate reused run_ids across invocations against spec 7.3's uniqueness SHOULD. 102 tests green. |
 | 2026-08-06 | PR #1 merged - the foundation is on main. Contributor on-ramp built: PR and issue templates (protocol capture, deployment report, adapter request, bug, translation), and 11 seeded issues so the good-first-issue links in README/CONTRIBUTING finally resolve. Open roadmap items are now cross-referenced to their tracking issues. |
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |

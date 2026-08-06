@@ -23,7 +23,7 @@ import sqlite3
 import sys
 
 from omp_tools.envelope import checksum as compute_checksum
-from omp_tools.specload import load_spec
+from omp_tools.specload import CORE_EVENT_TYPES, load_spec
 from omp_tools.validate import validate_envelope
 
 SCHEMA = """
@@ -55,7 +55,11 @@ class Consumer:
         self.db = sqlite3.connect(db_path)
         self.db.executescript(SCHEMA)
         self.spec = load_spec(spec_dir)
-        self.stats = {"stored": 0, "duplicates": 0, "quarantined": 0, "alarms": 0}
+        self.stats = {"stored": 0, "duplicates": 0, "quarantined": 0,
+                      "alarms": 0, "unknown_event_types": 0}
+        # vocabulary from profile minors newer than ours, seen and counted
+        # rather than dropped (spec s9)
+        self.unknown_types: set[str] = set()
 
     # -- one line through all six stages --------------------------------
     def ingest_line(self, raw: str) -> None:
@@ -69,10 +73,16 @@ class Consumer:
         except ValueError as exc:
             self._quarantine(raw, f"parse: {exc}")
             return
-        errors = validate_envelope(env, self.spec)  # 2: validate (never repair)
+        # 2: validate (never repair). forward_compatible=True because a
+        # consumer running profile 0.1 will legitimately receive 0.2
+        # vocabulary: spec s9 requires accepting unknown event types under a
+        # known profile major as opaque. Rejecting them is the guide's
+        # "hard-coding profiles" mistake, and it silently drops real data.
+        errors = validate_envelope(env, self.spec, forward_compatible=True)
         if errors:
             self._quarantine(raw, f"validate: {errors[0]}")
             return
+        self._note_unknown_vocabulary(env)
         key = (env["gateway_id"], env["machine_id"], env["seq"])
         row = self.db.execute(
             "SELECT envelope FROM raw_envelopes WHERE gateway_id=? AND "
@@ -95,6 +105,19 @@ class Consumer:
         self._project(env)  # 6: project
         self.stats["stored"] += 1
         self.db.commit()
+
+    def _note_unknown_vocabulary(self, env: dict) -> None:
+        """Log them, count them, display them generically - never drop."""
+        if env["schema"] != "event":
+            return
+        name = env["profile"].split("/")[0]
+        prof = self.spec.profiles.get(name)
+        if not prof:
+            return
+        et = env["body"].get("event_type")
+        if et not in CORE_EVENT_TYPES and et not in prof["events"]:
+            self.stats["unknown_event_types"] += 1
+            self.unknown_types.add(f"{name}:{et}")
 
     def _quarantine(self, raw: str, reason: str) -> None:
         self.db.execute("INSERT INTO quarantine VALUES (?,?)", (raw, reason))
@@ -134,6 +157,9 @@ class Consumer:
     def report(self) -> str:
         lines = [f"{k}: {v}" for k, v in self.stats.items()]
         gaps = self.gaps()
+        if self.unknown_types:
+            lines.append("unknown event types (newer profile minor, kept as "
+                         f"opaque): {sorted(self.unknown_types)}")
         lines.append(f"machines with seq gaps: {len(gaps)}")
         for key, missing in gaps.items():
             lines.append(f"  {key} missing seq {missing} (seq_complete: false)")

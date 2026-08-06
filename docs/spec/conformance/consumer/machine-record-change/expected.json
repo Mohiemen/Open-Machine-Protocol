@@ -1,0 +1,13 @@
+{
+  "case": "machine-record-change",
+  "description": "Machines re-announce on change. A machine record is a slowly changing dimension: a new location opens a new validity period, it does not overwrite history. Genealogy depends on this.",
+  "note": "Overwriting the earlier record would silently re-attribute every past envelope to the machine's new station.",
+  "expect": {
+    "stored": 27,
+    "duplicates": 0,
+    "alarms": 0,
+    "quarantined": 0,
+    "gaps": {},
+    "machine_validity_periods": 2
+  }
+}

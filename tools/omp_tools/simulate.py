@@ -3,6 +3,13 @@
 Profiles: generic (core events), textile-sewing (cycle-based line),
 textile-dyeing (batch with phase skeleton). Output is NDJSON on stdout, or
 MQTT with --export. Time is simulated: a --duration of 8h emits immediately.
+
+Identity caveat: gateway_id is always "gw-sim-01" and machine ids derive from
+--line and the machine index, so two invocations produce envelopes sharing
+(gateway_id, machine_id, seq) with different content. Downstream that is
+indistinguishable from tampering and a conformant consumer WILL raise an
+integrity alarm. Feed one simulator run per consumer, or rewrite the ids, when
+building fixtures.
 """
 from __future__ import annotations
 
@@ -81,6 +88,11 @@ class Simulator:
         self.line = args.line
         self.gateway_id = "gw-sim-01"
         self.rng = random.Random(args.seed)
+        # run_id SHOULD be globally unique (spec 7.3). A bare counter repeats
+        # across invocations, which collides as soon as two bundles are audited
+        # together - so mix in a per-invocation token. Still reproducible under
+        # a fixed --seed.
+        self.run_token = f"{self.rng.getrandbits(32):08x}"
         self.out = emit_fn
 
     # ---------------------------------------------------------- sewing/generic
@@ -88,7 +100,7 @@ class Simulator:
         t = EPOCH
         end = EPOCH + dt.timedelta(seconds=seconds)
         m.announce(t)
-        run_id = f"run-{m.machine_id}-1"
+        run_id = f"run-{m.machine_id}-{self.run_token}"
         m.emit("event", {"event_type": "run_start", "run_id": run_id}, t)
         first_seq = m.seq
         cycles = 0
@@ -170,7 +182,7 @@ class Simulator:
     def run_dye_machine(self, m: Machine, seconds: float):
         t = EPOCH
         m.announce(t)
-        run_id = f"batch-{m.machine_id}-1"
+        run_id = f"batch-{m.machine_id}-{self.run_token}"
         m.emit("event", {"event_type": "run_start", "run_id": run_id}, t)
         first_seq = m.seq
         fabric_kg = self.rng.randrange(300, 600, 20)

@@ -1,0 +1,28 @@
+# Quickstart section 5: Grafana + MQTT broker, preconfigured.
+# Start:  docker compose up -d      Open:  http://localhost:3000 (admin/admin)
+# Feed it:  omp-simulate --profile textile-sewing --machines 10 \
+#             --export mqtt://localhost:1883 --site demo --line line1
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    command: mosquitto -c /mosquitto-no-auth.conf
+    ports:
+      - "1883:1883"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      # Live MQTT datasource plugin (Grafana Labs)
+      GF_INSTALL_PLUGINS: grafana-mqtt-datasource
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      # Linux hosts: if panels stay empty, uncomment network_mode below and
+      # change the datasource URL in provisioning/datasources/mqtt.yaml to
+      # tcp://localhost:1883
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning
+      - ./dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - mosquitto
+    # network_mode: host   # Linux alternative to host.docker.internal

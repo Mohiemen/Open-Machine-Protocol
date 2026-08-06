@@ -1,0 +1,57 @@
+{
+  "title": "Sewing Line Overview",
+  "uid": "omp-sewing-line",
+  "tags": ["omp", "textile-sewing"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Live events (all machines)",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-mqtt-datasource", "uid": "omp-mqtt" },
+      "targets": [
+        { "refId": "A", "topic": "omp/demo/sewing/line1/+/event" }
+      ],
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 2,
+      "title": "Machine announcements",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "datasource": { "type": "grafana-mqtt-datasource", "uid": "omp-mqtt" },
+      "targets": [
+        { "refId": "A", "topic": "omp/demo/sewing/line1/+/machine" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Run summaries (process_run)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": { "type": "grafana-mqtt-datasource", "uid": "omp-mqtt" },
+      "targets": [
+        { "refId": "A", "topic": "omp/demo/sewing/line1/+/process_run" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Energy intervals",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "datasource": { "type": "grafana-mqtt-datasource", "uid": "omp-mqtt" },
+      "targets": [
+        { "refId": "A", "topic": "omp/demo/sewing/line1/+/energy" }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "bars" }, "unit": "kwatth" },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

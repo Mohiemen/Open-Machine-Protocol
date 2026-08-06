@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: OMP MQTT
+    type: grafana-mqtt-datasource
+    uid: omp-mqtt
+    access: proxy
+    jsonData:
+      uri: tcp://mosquitto:1883
+    isDefault: true

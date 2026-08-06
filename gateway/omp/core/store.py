@@ -98,6 +98,20 @@ class Store:
                 (exporter, rowid),
             )
 
+    # -- introspection (status CLI) -------------------------------------
+    def snapshot(self) -> dict:
+        with self._lock:
+            seqs = dict(self._conn.execute(
+                "SELECT machine_id, last_seq FROM seq_counters").fetchall())
+            buffered = self._conn.execute(
+                "SELECT COUNT(*) FROM buffer").fetchone()[0]
+            dead = self._conn.execute(
+                "SELECT COUNT(*) FROM dead_letters").fetchone()[0]
+            cursors = dict(self._conn.execute(
+                "SELECT exporter, last_rowid FROM exporter_cursors").fetchall())
+        return {"machines": seqs, "buffered": buffered,
+                "dead_letters": dead, "cursors": cursors}
+
     # -- dead letters ---------------------------------------------------
     def dead_letter(self, machine_id: str, received_ts: str, body: dict,
                     error: str) -> None:

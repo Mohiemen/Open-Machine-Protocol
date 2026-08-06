@@ -28,10 +28,14 @@ class Engine:
     validation error attached and are never exported as valid data.
     """
 
-    def __init__(self, gateway_id: str, store: Store, spec_dir=None):
+    def __init__(self, gateway_id: str, store: Store, spec_dir=None, signer=None):
+        """signer: optional omp.core.keys.GatewayKey - when set, every
+        envelope carries an Ed25519 `sig` (hardening guide: required for
+        deployments whose data may support compliance claims)."""
         self.gateway_id = gateway_id
         self.store = store
         self.spec = load_spec(spec_dir)
+        self.signer = signer
 
     def process(self, machine_id: str, body: Body) -> dict | None:
         """Returns the buffered envelope, or None if dead-lettered."""
@@ -47,6 +51,10 @@ class Engine:
                 seq=seq,
                 ts=ts,
             )
+            if self.signer is not None:
+                envelope["sig"] = self.signer.sign(
+                    self.gateway_id, machine_id, seq, envelope["checksum"]
+                )
         except ValueError as exc:
             self.store.dead_letter(machine_id, ts, body.body, str(exc))
             return None

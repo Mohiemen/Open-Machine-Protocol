@@ -21,11 +21,19 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   `omp/{site}/{area}/{line}/{machine}/{schema}`, QoS 1, ack after publish).
 - `omp-gateway run-once --adapter <dir> --config <yaml>` - the adapter
   development loop from the [Writing an Adapter guide](../docs/docs/guides/writing-an-adapter.md).
+- **Ed25519 signing** (`omp.core.keys`) - keypair generated on-device
+  (0600, never serialized elsewhere), signature over
+  `gateway_id\nmachine_id\nseq\nchecksum` (UTF-8); `omp-validate --pubkey`
+  verifies the same construction. The spec's `||` concatenation encoding is
+  pinned here pending a clarification RFC.
+- **Service commands** - `install-service` (dirs, keypair, registry
+  template, systemd unit), `show-identity`, `run` (the daemon: registry ->
+  adapters by name -> engine -> exporters, machine announcement on startup,
+  `--sign`), `status`, `dead-letters`.
 
-## Not here yet (M2 Phase 2)
+## Not here yet
 
-Service management (`install-service`, `status`, `tail`, `dead-letters` CLI,
-registry hot-reload), Ed25519 signing, REST/OPC UA/CSV exporters, retention
-pruning, transport pool, and the production adapter host (restart policy,
-probe timeouts). Tracked in the
+REST/OPC UA/CSV exporters, registry hot-reload, retention pruning, transport
+pool, adapter restart policy/probe timeouts, release signature verification
+(`verify-release`), retrofit OTA. Tracked in the
 [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

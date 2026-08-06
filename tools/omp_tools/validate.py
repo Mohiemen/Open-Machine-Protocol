@@ -38,6 +38,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--spec-dir", help="path to the spec directory")
     parser.add_argument("--quiet", action="store_true", help="summary line only")
     parser.add_argument(
+        "--pubkey", metavar="BASE64",
+        help="verify Ed25519 signatures against this gateway public key; "
+             "envelopes without a sig then fail",
+    )
+    parser.add_argument(
         "--version", action="version", version=f"omp-validate {__version__}"
     )
     args = parser.parse_args(argv)
@@ -68,6 +73,13 @@ def main(argv: list[str] | None = None) -> int:
         errors = validate_envelope(envelope, spec) if isinstance(envelope, dict) else [
             "not a JSON object"
         ]
+        if not errors and args.pubkey:
+            from .sigverify import verify_envelope_sig
+
+            if "sig" not in envelope:
+                errors = ["signature required (--pubkey given) but absent"]
+            elif not verify_envelope_sig(envelope, args.pubkey):
+                errors = ["signature verification failed"]
         if errors:
             invalid += 1
             if not args.quiet:

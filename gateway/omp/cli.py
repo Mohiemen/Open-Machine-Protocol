@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import pathlib
 import sys
 import tempfile
@@ -193,9 +194,14 @@ def cmd_show_identity(args) -> int:
     from .core.keys import GatewayKey
 
     state = pathlib.Path(args.state_dir)
-    gateway_id = (state / "gateway_id").read_text(encoding="utf-8").strip()
-    key = GatewayKey.load(state / "keys" / "gateway.pem")
-    print(f"gateway_id: {gateway_id}")
+    id_file, key_file = state / "gateway_id", state / "keys" / "gateway.pem"
+    for f, what in ((id_file, "gateway id"), (key_file, "gateway keypair")):
+        if not f.exists():
+            print(f"no {what} at {f} - run 'omp-gateway install-service' "
+                  f"(or 'run --sign') against this state dir first", file=sys.stderr)
+            return 1
+    key = GatewayKey.load(key_file)
+    print(f"gateway_id: {id_file.read_text(encoding='utf-8').strip()}")
     print(f"pubkey: ed25519:{key.public_key_b64()}")
     return 0
 
@@ -229,11 +235,18 @@ def cmd_run(args) -> int:
 
     state = pathlib.Path(args.state_dir)
     registry = load_registry(args.registry)
+    id_file = state / "gateway_id"
     gateway_id = args.gateway_id
     if gateway_id is None:
-        id_file = state / "gateway_id"
         gateway_id = (id_file.read_text(encoding="utf-8").strip()
                       if id_file.exists() else "gw-unnamed-01")
+    # persist the identity so show-identity works against this state dir even
+    # when the gateway was started without install-service (the pubkey has to
+    # be recordable in the key registry - DPP Evidence Chain section 6)
+    state.mkdir(parents=True, exist_ok=True)
+    current = id_file.read_text(encoding="utf-8").strip() if id_file.exists() else None
+    if current != gateway_id:
+        id_file.write_text(gateway_id + "\n", encoding="utf-8")
     signer = None
     if args.sign:
         from .core.keys import GatewayKey
@@ -245,13 +258,23 @@ def cmd_run(args) -> int:
     exporters = _build_exporters(registry)
     drain_lock = threading.Lock()
 
-    def drain():
-        with drain_lock:
-            for exporter in exporters:
-                exporter.drain(store)
+    from .exporters.base import ExporterClosed
 
     threads = []
     stop_evt = threading.Event()
+
+    def drain():
+        """Returns False once a destination is gone for good - the caller
+        stops rather than spinning on a closed pipe. Undelivered envelopes
+        stay in the buffer unacked, so nothing is silently lost."""
+        try:
+            with drain_lock:
+                for exporter in exporters:
+                    exporter.drain(store)
+        except ExporterClosed:
+            stop_evt.set()
+            return False
+        return True
     for m in registry.get("machines", []):
         adapter_dir = pathlib.Path(args.adapters_dir) / m["adapter"]
         cls = load_adapter_class(str(adapter_dir))
@@ -278,9 +301,10 @@ def cmd_run(args) -> int:
             print(f"# probe failed for {machine_id}: {exc}", file=sys.stderr)
             continue
 
-        def emit(body, _mid=machine_id):
+        def emit(body, _mid=machine_id, _adapter=adapter):
             engine.process(_mid, body)
-            drain()
+            if not drain():
+                _adapter.stop()   # destination gone; wind this adapter down
 
         t = threading.Thread(target=adapter.start, args=(emit,), daemon=True,
                              name=f"adapter-{machine_id}")
@@ -298,6 +322,13 @@ def cmd_run(args) -> int:
         t.join(timeout=10)
     drain()
     store.close()
+    # if stdout is a closed pipe, Python's exit-time flush raises again -
+    # point the fd at /dev/null so the process exits quietly like any other
+    # well-behaved CLI in a pipeline
+    try:
+        sys.stdout.flush()
+    except BrokenPipeError:
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     return 0
 
 

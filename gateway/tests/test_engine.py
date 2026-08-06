@@ -83,6 +83,28 @@ def test_exporter_cursor_at_least_once(tmp_path):
     assert exp.drain(store) == 1 and exp.got[-1] == 6
 
 
+def test_closed_stdout_pipe_does_not_ack_undelivered(tmp_path):
+    """`omp-gateway run | head` is ordinary usage: it must not traceback, and
+    it must not advance the cursor past an envelope nobody received."""
+    import pytest
+
+    from omp.exporters.base import ExporterClosed, StdoutExporter
+
+    store = Store(tmp_path / "b.db")
+    engine = Engine("gw-test-01", store)
+    for _ in range(3):
+        engine.process("m-one-01", event())
+
+    class ClosedPipe:
+        def write(self, _):
+            raise BrokenPipeError(32, "Broken pipe")
+
+    exp = StdoutExporter(stream=ClosedPipe())
+    with pytest.raises(ExporterClosed):
+        exp.drain(store)
+    assert store.pending(exp.name), "undelivered envelopes stay pending"
+
+
 def test_two_exporters_independent_cursors(tmp_path):
     store = Store(tmp_path / "b.db")
     engine = Engine("gw-test-01", store)

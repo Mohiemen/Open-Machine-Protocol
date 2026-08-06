@@ -21,13 +21,9 @@ jobs:
         run: ruff check gateway/ tools/ adapters/ examples/
       - name: Tests (includes conformance vectors)
         run: pytest tools/tests gateway/tests -q
-      - name: Quickstart pipeline smoke
-        run: |
-          for p in generic textile-sewing textile-dyeing; do
-            omp-simulate --profile "$p" --machines 3 --duration 30m --seed 1 | omp-validate --quiet
-          done
-          # chaos must make the validator fail
-          if omp-simulate --profile textile-sewing --machines 3 --duration 1h \
-               --seed 2 --chaos corrupt-fields | omp-validate --quiet; then
-            echo "chaos stream unexpectedly validated" && exit 1
-          fi
+      - name: Drive the app end to end
+        # same harness the run-open-machine-protocol skill documents:
+        # quickstart pipeline, conformance vectors, a real adapter through the
+        # engine, a signed daemon run with signature verification, and the
+        # reference consumer
+        run: python .claude/skills/run-open-machine-protocol/driver.py all

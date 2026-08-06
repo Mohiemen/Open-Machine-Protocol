@@ -143,3 +143,16 @@ def test_daemon_run_signed_end_to_end(tmp_path, capsys):
     assert cli_main(["status", "--state-dir", str(state)]) == 0
     out = capsys.readouterr().out
     assert "f1-dye-jig01" in out and "dead_letters: 0" in out
+
+    # regression: `run` must persist the gateway id, or show-identity - the
+    # command that surfaces the pubkey for the key registry (DPP guide s6) -
+    # blows up on a state dir that never saw install-service
+    assert cli_main(["show-identity", "--state-dir", str(state)]) == 0
+    ident = capsys.readouterr().out
+    assert "gw-f1-pilot-01" in ident and "ed25519:" in ident
+
+
+def test_show_identity_without_state_errors_cleanly(tmp_path, capsys):
+    """Missing identity is an operator mistake, not a traceback."""
+    assert cli_main(["show-identity", "--state-dir", str(tmp_path / "nope")]) == 1
+    assert "install-service" in capsys.readouterr().err

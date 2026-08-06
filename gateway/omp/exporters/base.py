@@ -12,6 +12,11 @@ import sys
 from ..core.store import Store
 
 
+class ExporterClosed(Exception):
+    """The destination went away for good - e.g. the stdout pipe was closed
+    by `head`. Callers stop draining rather than acking undelivered data."""
+
+
 class Exporter:
     name = "base"
 
@@ -37,4 +42,10 @@ class StdoutExporter(Exporter):
         self.stream = stream or sys.stdout
 
     def publish(self, envelope: dict) -> None:
-        self.stream.write(json.dumps(envelope, ensure_ascii=False) + "\n")
+        try:
+            self.stream.write(json.dumps(envelope, ensure_ascii=False) + "\n")
+        except BrokenPipeError as exc:
+            # `omp-gateway run | head` is ordinary usage, not an error - but
+            # the envelope was NOT delivered, so surface it instead of letting
+            # drain() ack it.
+            raise ExporterClosed("stdout pipe closed") from exc

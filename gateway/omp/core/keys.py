@@ -4,9 +4,13 @@ The spec defines the signature input as `gateway_id || machine_id || seq ||
 checksum` without pinning the concatenation encoding. This implementation
 uses the UTF-8 bytes of the four values joined by single newlines
 (f"{gateway_id}\\n{machine_id}\\n{seq}\\n{checksum}") - unambiguous because
-none of the fields can contain a newline. Pinning this encoding in the spec
-is a tracked clarification RFC; until then this file is the reference
-behavior and omp-validate verifies the same construction.
+none of the fields can contain a newline, and injective for the same reason.
+
+RFC 0001 (docs/rfcs/0001-signature-input-encoding.md) proposes pinning
+exactly this encoding in the spec; until it is accepted, this file is the
+reference behavior and omp-validate --pubkey verifies the same construction.
+Do not change the encoding here without amending that RFC - every signature
+already produced depends on it.
 
 Private keys are generated on-device and never leave it (hardening guide
 section 4): the key file is chmod 0600 and no code here serializes the

@@ -14,11 +14,19 @@ never silently deleted - superseded items are struck through with a note.
 
 ---
 
-## Current Phase: Pre-v0.1 - Specification and Documentation
+## Current Phase: Pre-v0.1 - Awaiting Hardware Validation
 
-The repository is documentation-only today. The spec is drafted in prose; no
-implementation code exists yet. The BDFL bootstrap phase (GOVERNANCE.md 4.5)
-is in effect until spec v1.0 or 5 core maintainers from 3 organizations.
+The spec is drafted in prose with normative JSON Schemas and executable
+conformance vectors behind it, and the reference implementation runs: gateway
+(validation, buffering, Ed25519 signing, exporters), `omp-validate` /
+`omp-simulate` / `omp-sniff`, three adapters, and a reference consumer, all
+under CI.
+
+What separates this from v0.1 is **validation on real machines**, not more
+code. Every remaining M2 sub-item and all of M3 needs physical hardware: an
+ESP32 with a CT clamp, a Modbus PLC, a sewing machine, and a factory willing
+to host a soak. The BDFL bootstrap phase (GOVERNANCE.md 4.5) remains in
+effect until spec v1.0 or 5 core maintainers from 3 organizations.
 
 ### M0 - Documentation foundation
 
@@ -93,7 +101,7 @@ Per README Status and vision doc section 7:
 
 ### Open questions feeding future RFCs (architecture doc section 9, spec section 10)
 
-- [ ] Pin the signature input encoding: spec section 2 says `gateway_id || machine_id || seq || checksum` without defining the concatenation; the reference implementation uses UTF-8 newline-joined values (gateway/omp/core/keys.py). Needs a clarification RFC before a second independent implementation signs.
+- [~] Pin the signature input encoding - **[RFC 0001](../../../rfcs/0001-signature-input-encoding.md) drafted** *(2026-07-23)*, awaiting its 14-day comment window and a decision. Spec section 2 says `gateway_id || machine_id || seq || checksum` without defining the concatenation; the RFC pins LF-joined UTF-8 (what the reference implementation already does) and specifies the conformance vectors that land on acceptance. The normative spec is deliberately unchanged until then - process before convenience.
 - [ ] Profile inheritance (shared `wet-processing` base?)
 - [ ] Operator identity - core, profile, or extension
 - [ ] Time sync strategy for gateways without reliable NTP
@@ -135,4 +143,5 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M2 Phase 2: generic-serial (line profiles, stats aggregation, replay mode) and generic-modbus (YAML register maps, read-only-by-construction TCP/RTU framing, injected transport) adapters; omp-sniff (serial/stdin capture with annotations, decode view); platform-ingest-reference consumer (all six guide stages, integrity alarms, gap reporting). 71 tests green. Still open in M2: ESP32 firmware, Grafana dashboards, gateway service management, omp-sniff pcap. |
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
+| 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |

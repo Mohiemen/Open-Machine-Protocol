@@ -152,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     p_daemon.add_argument("--max-crashes", type=int, default=5,
                           help="mark a machine failed after this many adapter "
                                "crashes (default 5)")
+    p_daemon.add_argument("--drain-interval", type=float, default=0.2,
+                          help="seconds between export passes; higher batches "
+                               "more per request, lower is prompter (default 0.2)")
     p_daemon.add_argument("--probe-timeout", type=float, default=30,
                           help="seconds a probe() may take before the machine "
                                "is marked failed (default 30)")
@@ -466,8 +469,7 @@ def cmd_run(args) -> int:
 
         def emit(body, _mid=machine_id, _adapter=adapter):
             engine.process(_mid, body)
-            if not drain():
-                _adapter.stop()   # destination gone; wind this adapter down
+            work.set()            # coalesced by the drain worker below
 
         t = threading.Thread(target=_supervise, daemon=True,
                              name=f"adapter-{machine_id}",
@@ -483,6 +485,33 @@ def cmd_run(args) -> int:
             entry["adapter"].stop()
             entry["thread"].join(timeout=10)
             entry["adapter"].release_transports()
+
+    work = threading.Event()
+
+    def drain_worker():
+        """Coalesce exports instead of draining once per envelope.
+
+        Draining inline on every emit means a batching exporter never sees a
+        batch - the REST exporter would POST one envelope per request, which
+        is exactly what "POSTs batched NDJSON" is meant to avoid. Waking on a
+        short interval batches under load while staying prompt when idle.
+        """
+        while not stop_evt.is_set():
+            work.wait(args.drain_interval)   # wake on new data, or tick anyway
+            work.clear()
+            if not drain():
+                stop_evt.set()
+                return
+            # Rate-limit to at most one pass per interval. Without this the
+            # worker wakes on every emit and a batching exporter still sees
+            # one envelope per request; with it, everything arriving inside
+            # the window ships together. Worst-case export latency is one
+            # interval, which is the trade the flag documents.
+            stop_evt.wait(args.drain_interval)
+
+    drain_thread = threading.Thread(target=drain_worker, daemon=True,
+                                    name="drain")
+    drain_thread.start()
 
     reload_requested = threading.Event()
     pidfile = state / "gateway.pid"
@@ -556,6 +585,9 @@ def cmd_run(args) -> int:
         pass
     for machine_id in list(running):
         stop_machine(machine_id)
+    stop_evt.set()
+    work.set()
+    drain_thread.join(timeout=5)
     drain()
     pool.close_all()
     pidfile.unlink(missing_ok=True)
@@ -593,9 +625,23 @@ def _build_exporters(registry: dict):
             built.append(MqttExporter(m.group(1), int(m.group(2) or 1883),
                                       e.get("topic_prefix", "omp"),
                                       locations=locations))
+        elif e["type"] == "rest":
+            from .exporters.rest import RestConfigError, RestExporter
+
+            try:
+                built.append(RestExporter(
+                    e["url"],
+                    batch_size=e.get("batch_size", 100),
+                    timeout_s=e.get("timeout_s", 30),
+                    headers=e.get("headers"),
+                    allow_plaintext_local=e.get("allow_plaintext_local", False),
+                    gzip_body=e.get("gzip", True),
+                ))
+            except RestConfigError as exc:
+                raise SystemExit(f"rest exporter: {exc}") from None
         else:
             raise SystemExit(f"unsupported exporter type {e['type']!r} "
-                             "(REST/OPC UA/CSV are roadmap)")
+                             "(OPC UA is roadmap; CSV is issue #4)")
     return built
 
 

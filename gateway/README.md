@@ -17,8 +17,11 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   error attached, and their seq is a visible gap, never reused), SQLite WAL
   store with per-machine persistent seq and per-exporter cursors
   (at-least-once).
-- `omp.exporters` - stdout and MQTT (topic convention
-  `omp/{site}/{area}/{line}/{machine}/{schema}`, QoS 1, ack after publish).
+- `omp.exporters` - stdout, MQTT (topic convention
+  `omp/{site}/{area}/{line}/{machine}/{schema}`, QoS 1, ack after publish),
+  and REST (batched NDJSON, gzip, ack only after a 2xx; refuses plain HTTP to
+  non-loopback per Hardening Guide s5). Exports are coalesced by a drain
+  worker (`--drain-interval`) so batching exporters see real batches.
 - `omp-gateway run-once --adapter <dir> --config <yaml>` - the adapter
   development loop from the [Writing an Adapter guide](../docs/docs/guides/writing-an-adapter.md).
 - **Ed25519 signing** (`omp.core.keys`) - keypair generated on-device
@@ -42,8 +45,8 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
 
 ## Not here yet
 
-REST / OPC UA / CSV exporters (CSV is a
+OPC UA exporter and CSV exporter (CSV is a
 [good first issue](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
-`tail`, a transport pool for shared RS485 buses, release signature
-verification (`verify-release`), and retrofit OTA. Tracked in the
+`audit-host`, release signature verification (`verify-release`), and retrofit
+OTA. Tracked in the
 [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

@@ -161,7 +161,14 @@ outrank new features.
    first-machine loop. Smallest item here and immediately useful to anyone
    following the guide.
 
-3. **REST exporter** - [Platform Ingestion s1](../../integrations/platform-ingestion.md)
+3. ~~**REST exporter**~~ - **done 2026-08-06**: batched NDJSON with gzip, acks
+   only after a 2xx, transient failures leave the batch buffered, a 4xx stops
+   rather than wedging the buffer behind data the endpoint will never accept,
+   and plain HTTP to a non-loopback host is refused at construction per
+   Hardening Guide s5 [Required]. Building it exposed that the daemon drained
+   once per envelope, so a "batching" exporter posted one envelope per
+   request - exports are now coalesced by a drain worker (`--drain-interval`).
+   Originally from [Platform Ingestion s1](../../integrations/platform-ingestion.md)
    lists four transports; MQTT and stdout exist, CSV is reserved as a good
    first issue ([#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
    REST is unclaimed. Must return 200 only after a durable write, and must
@@ -241,6 +248,7 @@ next contributor's PR gets no check. Fix before the queue above.
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
 | 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
+| 2026-08-06 | Queue item 3 done: REST exporter (batched NDJSON, gzip, ack-only-after-2xx, refuses plaintext HTTP off-loopback). Verified against a live HTTP server that writes to disk before returning 200. The end-to-end run exposed a real defect the unit tests could not: the daemon drained after every emit, so the batching exporter sent one envelope per request - exports are now coalesced by a drain worker, and `--drain-interval` genuinely trades latency for batch size. 140 tests green. |
 | 2026-08-06 | Queue item 2 done: `omp-gateway tail` exists, so the loop first-real-machine s6 documents actually runs. It observes without acking - tailing must never let retention think data was delivered - and `omp-validate` now prints its summary on Ctrl-C instead of dying, which is what makes `tail | omp-validate` usable live. Testing the documented command found the first cut wrong: `--no-follow` started from 'now' and printed nothing. 125 tests green. |
 | 2026-08-06 | Queue item 1 done: the adapter transport pool exists, so several machines on one RS485 pair (or one Modbus TCP gateway) share a link and their transactions serialize. The unit of exclusion is the whole request/response round trip, because splitting it is what makes unit 1 read unit 2's reply - a failure that shows up as random CRC errors on real hardware. Verified with a negative control, not just a passing test. 119 tests green. |
 | 2026-08-06 | Added the Unblocked Work Queue after sweeping the docs against the implementation: four capabilities were documented as existing but never built (`tail`, `audit-host`, `verify-release`, the adapter transport pool). Sequenced them, recorded which unblocked items stay reserved for first-time contributors, and flagged that CI is currently not running - which outranks the whole queue. |

@@ -1,0 +1,155 @@
+{
+  "phases": {
+    "load": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "fabric_kg": {
+            "type": "number"
+          },
+          "liquor_ratio": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "fabric_kg"
+        ]
+      }
+    },
+    "pretreat": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "scour",
+              "bleach",
+              "enzyme",
+              "other"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ]
+      }
+    },
+    "heat": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "from_c": {
+            "type": "number"
+          },
+          "to_c": {
+            "type": "number"
+          },
+          "gradient_c_per_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "from_c",
+          "to_c",
+          "gradient_c_per_min"
+        ]
+      }
+    },
+    "hold": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "temp_c": {
+            "type": "number"
+          },
+          "duration_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "temp_c",
+          "duration_min"
+        ]
+      }
+    },
+    "dose": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "chemical_ref": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "chemical_ref",
+          "amount",
+          "unit"
+        ]
+      }
+    },
+    "cool": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "from_c": {
+            "type": "number"
+          },
+          "to_c": {
+            "type": "number"
+          },
+          "gradient_c_per_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "from_c",
+          "to_c",
+          "gradient_c_per_min"
+        ]
+      }
+    },
+    "rinse": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "cycles": {
+            "type": "integer"
+          },
+          "temp_c": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "cycles"
+        ]
+      }
+    },
+    "drain": {
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "unload": {
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  }
+}

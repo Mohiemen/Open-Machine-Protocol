@@ -1,0 +1,4 @@
+{
+  "channels": {},
+  "note": "generic recommends no channels; any channel name matching ^[a-z][a-z0-9_]*$ with a UCUM unit is acceptable."
+}

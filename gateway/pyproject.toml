@@ -1,0 +1,21 @@
+[project]
+name = "omp-gateway"
+version = "0.1.0"
+description = "Open Machine Protocol edge gateway - adapter host, validation, buffering, export"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = ["jsonschema>=4.18", "PyYAML>=6", "cryptography>=41"]
+
+[project.optional-dependencies]
+mqtt = ["paho-mqtt>=1.6"]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+omp-gateway = "omp.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["omp*"]

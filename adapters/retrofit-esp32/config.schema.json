@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "retrofit-esp32 config",
+  "type": "object",
+  "properties": {
+    "node_id": { "type": "string", "description": "Node id from the provisioning page, e.g. omp-node-3f2a" },
+    "kit": { "enum": ["ct_clamp", "vibration", "optical_counter"], "default": "ct_clamp" },
+    "broker_host": { "type": "string", "default": "localhost", "description": "Local broker the nodes report to" },
+    "broker_port": { "type": "integer", "default": 1883 },
+    "messages": { "type": "array", "description": "Injected node messages (dev/tests)" },
+    "replay_file": { "type": "string", "description": "NDJSON capture of node messages (dev/CI)" }
+  },
+  "required": ["node_id"],
+  "additionalProperties": false
+}

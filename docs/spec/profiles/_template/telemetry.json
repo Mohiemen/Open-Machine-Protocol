@@ -1,0 +1,11 @@
+{
+  "channels": {
+    "{channel_name}": {
+      "unit": "{UCUM unit}",
+      "notes": "{when fitted}"
+    }
+  },
+  "quantities": [
+    "{recommended process_run quantity names}"
+  ]
+}

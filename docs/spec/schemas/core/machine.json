@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp:spec:core:machine:0.1",
+  "title": "OMP machine body",
+  "description": "Identity and capability declaration. Core Schema Specification v0.1 section 7.1.",
+  "type": "object",
+  "properties": {
+    "machine_class": {
+      "description": "From the declared profile's taxonomy (generic allows unclassified).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "make": { "type": "string" },
+    "model": { "type": "string" },
+    "serial": { "type": "string" },
+    "year": { "type": "integer", "minimum": 1900, "maximum": 2200 },
+    "location": {
+      "type": "object",
+      "properties": {
+        "site": { "type": "string" },
+        "area": { "type": "string" },
+        "line": { "type": "string" },
+        "station": { "type": "string" }
+      },
+      "required": ["site"],
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "description": "Which schemas this machine emits.",
+      "type": "array",
+      "items": { "enum": ["machine", "event", "process_run", "energy", "telemetry"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "adapter": {
+      "description": "Provenance of the data source.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "data_source": { "enum": ["native", "retrofit", "hybrid"] }
+  },
+  "required": ["machine_class", "location", "capabilities", "adapter", "data_source"],
+  "patternProperties": { "^x-": { "type": "object" } },
+  "additionalProperties": false
+}

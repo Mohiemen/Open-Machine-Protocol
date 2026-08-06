@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          pip install -e ./gateway -e ./tools
+          # ruff is pinned: an unpinned linter turns every upstream release
+          # into a surprise red build on an unrelated PR. Bump deliberately.
+          pip install pytest 'ruff==0.15.8'
+      - name: Lint
+        # rule set lives in ruff.toml so local and CI agree
+        run: ruff check gateway/ tools/ adapters/ examples/ .claude/
+      - name: Tests (includes conformance vectors)
+        run: pytest tools/tests gateway/tests -q
+      - name: Drive the app end to end
+        # same harness the run-open-machine-protocol skill documents:
+        # quickstart pipeline, conformance vectors, a real adapter through the
+        # engine, a signed daemon run with signature verification, and the
+        # reference consumer
+        run: python .claude/skills/run-open-machine-protocol/driver.py all

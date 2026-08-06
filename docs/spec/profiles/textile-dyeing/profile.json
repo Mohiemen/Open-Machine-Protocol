@@ -1,0 +1,10 @@
+{
+  "name": "textile-dyeing",
+  "version": "0.1.0",
+  "status": "active",
+  "core_compatibility": "0.1",
+  "owners": [
+    "textile-dyeing working group (forming)"
+  ],
+  "description": "Wet processing - jet/winch/pad dyeing, washing, extraction, drying. Prose specification: PROFILE-SPEC.md section 8 (the worked example is this profile's normative prose)."
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "generic-serial config",
+  "type": "object",
+  "properties": {
+    "port": { "type": "string", "description": "Serial device, e.g. /dev/ttyUSB0" },
+    "baud": { "type": "integer", "default": 9600 },
+    "line_profile": { "type": "string", "description": "Path to the line profile YAML" },
+    "stats_window_s": { "type": "number", "default": 60 },
+    "replay_file": { "type": "string", "description": "Replay captured lines instead of opening a port (dev/CI)" }
+  },
+  "required": ["line_profile"],
+  "anyOf": [
+    { "required": ["port"] },
+    { "required": ["replay_file"] }
+  ],
+  "additionalProperties": false
+}

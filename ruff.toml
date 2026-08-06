@@ -1,0 +1,24 @@
+# Lint configuration for the whole repo.
+#
+# The rule set is pinned explicitly (not left to ruff's defaults) so that
+# `ruff check` gives the same answer on a contributor's laptop, in CI, and
+# across ruff releases. CI pins the ruff version to match; see
+# .github/workflows/ci.yml. A lint that only fails in CI wastes everyone's
+# afternoon, and this repo's contributors are volunteers with an afternoon
+# a week.
+line-length = 100
+
+[lint]
+select = [
+    "E4", "E7", "E9",  # pycodestyle (ruff's default subset)
+    "F",               # pyflakes
+    "I",               # import sorting
+    "ISC",             # implicit string concatenation
+    "PIE",             # misc lints (useless lambdas, etc.)
+    "UP",              # pyupgrade
+    "B",               # bugbear
+]
+
+[lint.per-file-ignores]
+# Tests build deliberately malformed YAML/JSON fixtures as inline strings.
+"**/tests/*" = ["ISC001", "ISC002"]

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:omp:spec:core:event:0.1",
+  "title": "OMP event body",
+  "description": "Discrete occurrences. Core Schema Specification v0.1 section 7.2. Payload contents are constrained by the declared profile, not by this core schema.",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "description": "Core vocabulary or the declared profile's vocabulary.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "severity": { "enum": ["info", "warning", "error", "critical"] },
+    "run_id": { "type": "string" },
+    "payload": { "type": "object" },
+    "duration_ms": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["event_type"],
+  "allOf": [
+    {
+      "description": "severity is MUST for error/alarm event types.",
+      "if": { "properties": { "event_type": { "enum": ["error", "alarm"] } } },
+      "then": { "required": ["severity"] }
+    }
+  ],
+  "patternProperties": { "^x-": { "type": "object" } },
+  "additionalProperties": false
+}

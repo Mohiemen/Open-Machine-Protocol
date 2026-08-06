@@ -1,0 +1,30 @@
+{
+  "channels": {
+    "motor_current": {
+      "unit": "A",
+      "notes": "Native or CT clamp; run/idle inference source"
+    },
+    "stitch_rate": {
+      "unit": "Hz",
+      "notes": "Instantaneous stitch frequency where reported"
+    },
+    "vibration_rms": {
+      "unit": "m/s2",
+      "notes": "Retrofit accelerometer, condition monitoring"
+    },
+    "press_temp": {
+      "unit": "Cel",
+      "notes": "Fusing/pressing platen temperature"
+    }
+  },
+  "quantities": [
+    "pieces_produced",
+    "cycles_total",
+    "stitches_total",
+    "defects_flagged",
+    "rework_count",
+    "kwh_total",
+    "runtime_min",
+    "idle_min"
+  ]
+}

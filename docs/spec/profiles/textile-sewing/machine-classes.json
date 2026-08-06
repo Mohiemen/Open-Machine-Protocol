@@ -1,0 +1,14 @@
+{
+  "classes": {
+    "lockstitch": "Single/multi-needle lockstitch machine (the plain sewer)",
+    "overlock": "Overlock/serger, edge finishing",
+    "coverstitch": "Coverstitch/flatlock machine",
+    "bartack": "Bartack/tacking machine, fixed-cycle",
+    "buttonhole": "Buttonhole machine, fixed-cycle",
+    "button_attach": "Button attaching machine, fixed-cycle",
+    "cutting": "Fabric cutting (straight knife, band knife, automated cutter)",
+    "fusing": "Fusing press (interlining bonding)",
+    "ironing_press": "Pressing/finishing station with measurable duty",
+    "other": "Anything else on the floor; identify via make/model in machine.json"
+  }
+}

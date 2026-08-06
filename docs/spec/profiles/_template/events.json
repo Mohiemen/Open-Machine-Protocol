@@ -1,0 +1,19 @@
+{
+  "events": {
+    "{event_type}": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "{field}": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "{field}"
+        ]
+      },
+      "notes": "{when machines report this; every event type MUST have a payload schema, even if empty}"
+    }
+  }
+}

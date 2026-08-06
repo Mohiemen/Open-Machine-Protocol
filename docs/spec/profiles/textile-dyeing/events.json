@@ -1,0 +1,234 @@
+{
+  "events": {
+    "phase_start": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "enum": [
+              "load",
+              "pretreat",
+              "heat",
+              "hold",
+              "dose",
+              "cool",
+              "rinse",
+              "drain",
+              "unload"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "phase"
+        ]
+      }
+    },
+    "phase_end": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "enum": [
+              "load",
+              "pretreat",
+              "heat",
+              "hold",
+              "dose",
+              "cool",
+              "rinse",
+              "drain",
+              "unload"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "phase"
+        ]
+      }
+    },
+    "dosing_start": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "tank": {
+            "type": "string"
+          },
+          "chemical_ref": {
+            "type": "string"
+          },
+          "target_amount": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tank",
+          "chemical_ref",
+          "target_amount",
+          "unit"
+        ]
+      },
+      "notes": "chemical_ref is the factory's own reference code, never a free-text chemical name"
+    },
+    "dosing_complete": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "tank": {
+            "type": "string"
+          },
+          "chemical_ref": {
+            "type": "string"
+          },
+          "target_amount": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "actual_amount": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tank",
+          "chemical_ref",
+          "target_amount",
+          "unit"
+        ]
+      }
+    },
+    "temp_setpoint_change": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "target_c": {
+            "type": "number"
+          },
+          "gradient_c_per_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "target_c"
+        ]
+      }
+    },
+    "hold_start": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "target_c": {
+            "type": "number"
+          },
+          "planned_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "target_c",
+          "planned_min"
+        ]
+      }
+    },
+    "hold_end": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "target_c": {
+            "type": "number"
+          },
+          "planned_min": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "target_c",
+          "planned_min"
+        ]
+      }
+    },
+    "sample_taken": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "enum": [
+              "load",
+              "pretreat",
+              "heat",
+              "hold",
+              "dose",
+              "cool",
+              "rinse",
+              "drain",
+              "unload"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "phase"
+        ]
+      },
+      "notes": "Lab sample pulled for shade check"
+    },
+    "addition": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "enum": [
+              "shade_correction",
+              "leveling",
+              "other"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ]
+      },
+      "notes": "Mid-process manual addition, a key quality signal"
+    },
+    "machine_fault": {
+      "payload": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "subsystem": {
+            "enum": [
+              "pump",
+              "heater",
+              "dosing",
+              "drive",
+              "sensor",
+              "other"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "subsystem"
+        ]
+      },
+      "notes": "Specializes core error"
+    }
+  }
+}

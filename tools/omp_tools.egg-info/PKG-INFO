@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: omp-tools
+Version: 0.1.0
+Summary: Open Machine Protocol tooling - omp-validate and omp-simulate
+License: Apache-2.0
+Requires-Python: >=3.11
+Requires-Dist: jsonschema>=4.18
+Provides-Extra: mqtt
+Requires-Dist: paho-mqtt>=1.6; extra == "mqtt"
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: ruff>=0.4; extra == "dev"

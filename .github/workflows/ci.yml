@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          pip install -e ./gateway -e ./tools
+          pip install pytest ruff
+      - name: Lint
+        run: ruff check gateway/ tools/
+      - name: Tests (includes conformance vectors)
+        run: pytest tools/tests gateway/tests -q
+      - name: Quickstart pipeline smoke
+        run: |
+          for p in generic textile-sewing textile-dyeing; do
+            omp-simulate --profile "$p" --machines 3 --duration 30m --seed 1 | omp-validate --quiet
+          done
+          # chaos must make the validator fail
+          if omp-simulate --profile textile-sewing --machines 3 --duration 1h \
+               --seed 2 --chaos corrupt-fields | omp-validate --quiet; then
+            echo "chaos stream unexpectedly validated" && exit 1
+          fi

@@ -118,6 +118,92 @@ Per README Status and vision doc section 7:
 
 ---
 
+---
+
+## Unblocked Work Queue
+
+Everything else on this roadmap waits on hardware, a maintainer decision, or
+an industry practitioner. This section is the work that needs **none of
+those** - it can start today - in the order it should be done, with the
+reason for that order.
+
+The whole queue exists because of one finding: a sweep of the docs against
+the implementation (2026-08-06) found capabilities **documented as if they
+already exist** but never built. Those are the same class of defect as the
+broken good-first-issue links - a promise the repo does not keep - and they
+outrank new features.
+
+### The sequence
+
+1. **Adapter transport pool (`self.transport(...)`)** - promised by
+   [Adapter Plugin API s4](../04-interfaces/adapter-plugin-api.md): "shared
+   transports are managed via the gateway's transport pool so two instances
+   can share one RS485 line safely". It does not exist, so today two machines
+   on one multi-drop bus each open their own port and collide. **First
+   because it is an API contract**: every adapter written before it lands is
+   written without it, and multi-drop RS485 is the normal textile-floor
+   topology, not an edge case. Testable with fake transports.
+
+2. **`omp-gateway tail`** - used in
+   [First Real Machine s6](../../getting-started/first-real-machine.md)
+   (`omp-gateway tail | omp-validate`) as part of the documented
+   first-machine loop. Smallest item here and immediately useful to anyone
+   following the guide.
+
+3. **REST exporter** - [Platform Ingestion s1](../../integrations/platform-ingestion.md)
+   lists four transports; MQTT and stdout exist, CSV is reserved as a good
+   first issue ([#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
+   REST is unclaimed. Must return 200 only after a durable write, and must
+   not ack past what the destination accepted. Verifiable against a local
+   HTTP server in-process.
+
+4. **`omp-gateway audit-host`** - [Hardening Guide s3](../../security/hardening-guide.md)
+   says it "runs these checks and reports drift; wire it into the weekly
+   rhythm". Checks the Required host items: SSH policy, unattended-upgrades,
+   the unprivileged service user, udev rules, dedicated-device assumption.
+
+5. **`omp-gateway verify-release`** - [Hardening Guide s6](../../security/hardening-guide.md)
+   marks it **[Required]**: "Install OMP releases only from GitHub Releases
+   with signature verification". Last of the five because it first needs a
+   release and signing convention to verify *against*, so it is the largest
+   scope and the least useful until releases exist.
+
+### Reserved, not forgotten
+
+These are unblocked but deliberately left for first-time contributors - the
+project needs an on-ramp more than it needs the features, and taking them
+would empty it:
+
+| Item | Issue |
+|---|---|
+| `omp-sniff` pcap mode | [#3](https://github.com/Mohiemen/Open-Machine-Protocol/issues/3) |
+| CSV exporter | [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) |
+| CLI reference page | [#5](https://github.com/Mohiemen/Open-Machine-Protocol/issues/5) |
+| Grafana visual verification | [#6](https://github.com/Mohiemen/Open-Machine-Protocol/issues/6) |
+| Bangla first-real-machine | [#7](https://github.com/Mohiemen/Open-Machine-Protocol/issues/7) |
+| Modbus register maps | [#8](https://github.com/Mohiemen/Open-Machine-Protocol/issues/8) |
+
+If no one claims one within a reasonable window, it stops being an on-ramp
+and becomes a gap - take it then.
+
+### Blocked, for contrast
+
+Not in this queue and not startable: `omp-gateway retrofit-update` (needs
+nodes), the OPC UA exporter and `opcua-client` adapter (need a server to
+verify against - shipping either unverified would repeat the ESP32 mistake),
+every M3 item (hardware), all remaining profiles (GOVERNANCE 6.2 requires 2+
+industry practitioners each), and the open RFC questions (decisions, not
+tasks).
+
+### Not on the roadmap but ahead of all of it
+
+**CI is not running.** Pushes stopped creating workflow runs after
+2026-08-06 17:25 and the available token cannot dispatch one. Until an owner
+resolves it, "conformance is the bar" in CONTRIBUTING is unenforced and the
+next contributor's PR gets no check. Fix before the queue above.
+
+---
+
 ## How to Update This File
 
 1. **Completing an item** - check it off with the date: `- [x] ... *(YYYY-MM-DD)*`.
@@ -144,6 +230,7 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M2 Phase 3: Ed25519 signing shipped end to end - on-device keypair (0600, never leaves), engine signs when enabled, omp-validate --pubkey verifies; sig-input encoding pinned in the reference implementation and flagged for a clarification RFC. Gateway service CLI: install-service, show-identity, run daemon (registry -> adapters -> signed envelopes -> exporters, machine announcement on startup), status, dead-letters. 76 tests green. Remaining in M2: ESP32 firmware, Grafana dashboards. |
 | 2026-07-23 | Grafana dashboard stack added (compose + MQTT datasource provisioning + Sewing Line Overview); compose config and dashboard JSON validated, live visual check marked community-verify (no Docker daemon in CI). M2 now 8/9 - the sole remaining item, ESP32 retrofit firmware, is hardware-gated, as is the whole M3 release gate. |
 | 2026-07-23 | Fixed a stale-roadmap bug: the phase header still claimed the repo was documentation-only with no implementation code, which stopped being true three commits earlier. Rewritten to state the real blocker - hardware validation, not more code. Also opened RFC 0001 (signature input encoding), the first RFC in the project's history, addressing the one open item that actively blocks a second implementation. |
+| 2026-08-06 | Added the Unblocked Work Queue after sweeping the docs against the implementation: four capabilities were documented as existing but never built (`tail`, `audit-host`, `verify-release`, the adapter transport pool). Sequenced them, recorded which unblocked items stay reserved for first-time contributors, and flagged that CI is currently not running - which outranks the whole queue. |
 | 2026-08-06 | Registry hot-reload ([#10](https://github.com/Mohiemen/Open-Machine-Protocol/issues/10)): `omp-gateway reload` signals a running gateway over SIGHUP; the new registry is validated in full - including that every named adapter loads - BEFORE anything is touched, so an operator pulling a bad file from git gets a refusal and an unchanged floor rather than an outage. Machines whose config is byte-identical are left running, so their seq continuity is never broken. Verified end to end against a live daemon. 113 tests green. |
 | 2026-08-06 | Track C (partial): retention pruning that can never outrun delivery - it prunes only past the SLOWEST configured exporter's cursor, so a stalled exporter fills the disk (loud) rather than losing evidence (silent); a removed exporter's stale cursor cannot pin the buffer forever; every prune is logged and shown in `status`. Plus the adapter restart policy from API s6 (crash isolation, exponential backoff, machine marked failed after --max-crashes) and probe timeouts, so one hung serial port cannot stall floor startup. CSV exporter deliberately left for [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) as a good-first-issue. 110 tests green. |
 | 2026-08-06 | Track B: `omp-validate --audit` implements the five DPP checks (completeness, integrity, authenticity, consistency, conformance) and emits the citation block; 8 executable consumer conformance suites close M1's partial item. Two real bugs found by building them: the reference consumer rejected unknown event types from newer profile minors (violating spec s9 and the guide's own 'hard-coding profiles' warning), and omp-simulate reused run_ids across invocations against spec 7.3's uniqueness SHOULD. 102 tests green. |

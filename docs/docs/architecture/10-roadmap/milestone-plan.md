@@ -57,12 +57,12 @@ cannot be conformance-tested.
 - [x] Gateway runtime core - registry validation, engine (validate-before-buffer, dead letters, seq persistence), SQLite WAL buffer with exporter cursors, MQTT + stdout exporters, adapter API per the interface doc, `run-once` dev loop *(2026-07-23; service management, signing, and production adapter host remain - Phase 2)*
 - [x] omp-validate CLI (profile-aware) - passes all conformance vectors, wired as pytest + CI *(2026-07-23)*
 - [x] omp-simulate with generic, textile-sewing, textile-dyeing scenarios - chaos mode, MQTT export, seeded reproducibility *(2026-07-23)*
-- [ ] omp-sniff capture tool (serial + pcap)
-- [ ] generic-modbus adapter with YAML register mapping
-- [ ] generic-serial adapter with one documented machine profile
+- [x] omp-sniff capture tool - serial + stdin capture, annotations, decode view *(2026-07-23; pcap mode still open)*
+- [x] generic-modbus adapter with YAML register mapping - self-contained read-only TCP/RTU framing, on_increment/on_change/stats modes, injected-transport CI path *(2026-07-23; real-hardware soak pending)*
+- [x] generic-serial adapter with line profiles and replay mode *(2026-07-23; real-hardware soak pending)*
 - [ ] retrofit-esp32 CT clamp firmware + hardware docs
 - [ ] Grafana example dashboards (examples/grafana-dashboards/)
-- [ ] Platform ingest reference consumer (examples/platform-ingest-reference/)
+- [x] Platform ingest reference consumer (examples/platform-ingest-reference/) - six-stage pipeline, integrity alarms, gap tracking, SQLite *(2026-07-23)*
 
 ### M3 - v0.1 release gate
 
@@ -129,3 +129,4 @@ Per README Status and vision doc section 7:
 | 2026-07-23 | M0 near-complete: security architecture/threat model doc authored (05-crosscutting); textile-sewing profile documented (Draft pending RFC); Bangla quickstart translated. Sole remaining M0 item: independent conduct contact (human appointment). |
 | 2026-07-23 | M1 complete: 6 core JSON Schemas (draft 2020-12), core conformance vectors (9 valid / 13 invalid, RFC 8785 checksums via gen_vectors.py), machine-readable profile packages (generic, textile-dyeing, textile-sewing) each with vectors, profile template, consumer cases. All schemas metaschema-valid; all 36 vectors execute green. Consumer NDJSON suites deferred to M2 (need the reference consumer). |
 | 2026-07-23 | M2 Phase 1 - the quickstart is real: omp-tools (omp-validate, omp-simulate) and omp-gateway (adapter API, engine, WAL store, MQTT/stdout exporters, run-once) shipped at repo root. 57 tests green including all 36 conformance vectors; documented quickstart pipeline verified end to end for all three profiles; GitHub Actions CI added (ruff + pytest + pipeline smoke). Phase 2 items: omp-sniff, adapters, firmware, dashboards, reference consumer, service management. |
+| 2026-07-23 | M2 Phase 2: generic-serial (line profiles, stats aggregation, replay mode) and generic-modbus (YAML register maps, read-only-by-construction TCP/RTU framing, injected transport) adapters; omp-sniff (serial/stdin capture with annotations, decode view); platform-ingest-reference consumer (all six guide stages, integrity alarms, gap reporting). 71 tests green. Still open in M2: ESP32 firmware, Grafana dashboards, gateway service management, omp-sniff pcap. |

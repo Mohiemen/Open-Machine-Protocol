@@ -13,6 +13,7 @@ dev = ["pytest>=7", "ruff>=0.4"]
 [project.scripts]
 omp-validate = "omp_tools.validate:main"
 omp-simulate = "omp_tools.simulate:main"
+omp-sniff = "omp_tools.sniff:main"
 
 [build-system]
 requires = ["setuptools>=68"]

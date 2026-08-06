@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "generic-modbus config",
+  "type": "object",
+  "properties": {
+    "mapping_file": { "type": "string", "description": "YAML register map (see README)" },
+    "host": { "type": "string", "description": "Modbus TCP host" },
+    "tcp_port": { "type": "integer", "default": 502 },
+    "port": { "type": "string", "description": "Serial device for Modbus RTU" },
+    "baud": { "type": "integer", "default": 9600 },
+    "unit_id": { "type": "integer", "default": 1 },
+    "timeout_ms": { "type": "integer", "default": 2000 },
+    "stats_window_s": { "type": "number", "default": 60 },
+    "framing": { "enum": ["tcp", "rtu"], "description": "Override framing when using an injected transport" },
+    "max_polls": { "type": "integer", "description": "Stop after N poll rounds (dev/CI only)" }
+  },
+  "required": ["mapping_file"],
+  "additionalProperties": true
+}

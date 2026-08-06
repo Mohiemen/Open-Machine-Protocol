@@ -26,14 +26,27 @@ from .exporters.base import StdoutExporter
 def load_adapter_class(adapter_path: str):
     """Import adapter.py (or an __init__.py package) from a directory path
     and return its Adapter class."""
-    p = pathlib.Path(adapter_path)
+    p = pathlib.Path(adapter_path).resolve()
     candidates = [p / "adapter.py", p / "__init__.py", p]
     src = next((c for c in candidates if c.is_file()), None)
     if src is None:
         raise SystemExit(f"no adapter module found under {adapter_path}")
     spec = importlib.util.spec_from_file_location(f"omp_adapter_{p.stem}", src)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # let adapter.py import its sibling protocol.py (the layout the
+    # Writing an Adapter guide recommends); every adapter names that module
+    # "protocol", so evict this adapter's siblings from sys.modules after
+    # exec to keep two adapters from sharing one cached module
+    sys.path.insert(0, str(src.parent))
+    before = set(sys.modules)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(src.parent))
+        for name in set(sys.modules) - before:
+            mod_file = getattr(sys.modules[name], "__file__", None) or ""
+            if mod_file.startswith(str(src.parent)):
+                del sys.modules[name]
     cls = getattr(module, "Adapter", None)
     if cls is None or not issubclass(cls, AdapterBase):
         raise SystemExit(f"{src} does not define an Adapter(AdapterBase) class")

@@ -18,7 +18,7 @@ jobs:
           pip install -e ./gateway -e ./tools
           pip install pytest ruff
       - name: Lint
-        run: ruff check gateway/ tools/
+        run: ruff check gateway/ tools/ adapters/ examples/
       - name: Tests (includes conformance vectors)
         run: pytest tools/tests gateway/tests -q
       - name: Quickstart pipeline smoke

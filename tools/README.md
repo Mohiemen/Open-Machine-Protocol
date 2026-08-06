@@ -20,5 +20,11 @@ omp-simulate --profile textile-sewing --machines 10 --duration 10m | omp-validat
 Spec discovery: `--spec-dir`, `OMP_SPEC_DIR`, or automatic when running from
 a repo checkout. See [the quickstart](../docs/docs/getting-started/quickstart.md).
 
-Shipped in M2 Phase 1. Not here yet: `omp-sniff` (capture tool) - see the
-[milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).
+- **omp-sniff** captures protocol traffic to annotated NDJSON that drops
+  straight into adapter replay fixtures - `--serial PORT` (needs pyserial),
+  `--stdin` for pipes/socat, `--decode FILE` for protocol study, `#`-prefixed
+  lines and TTY input become timestamped annotations. Passive only; it never
+  transmits. pcap mode is roadmap - use tcpdump and contribute the capture.
+
+See the [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md)
+for what's still open.

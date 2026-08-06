@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import os
 import pathlib
 import signal
@@ -161,6 +162,21 @@ def main(argv: list[str] | None = None) -> int:
     p_rl.add_argument("--state-dir", required=True)
     p_rl.set_defaults(func=cmd_reload)
 
+    p_tail = sub.add_parser("tail",
+                            help="stream buffered envelopes as NDJSON "
+                                 "(observe only - never acks)")
+    p_tail.add_argument("--state-dir", required=True)
+    p_tail.add_argument("--follow", "-f", action="store_true", default=True,
+                        help="keep streaming as new envelopes arrive (default)")
+    p_tail.add_argument("--no-follow", dest="follow", action="store_false",
+                        help="print what is buffered now and exit")
+    p_tail.add_argument("--last", type=int, default=0, metavar="N",
+                        help="start by printing the last N buffered envelopes")
+    p_tail.add_argument("--machine", default=None, help="only this machine_id")
+    p_tail.add_argument("--poll", type=float, default=0.5,
+                        help="seconds between polls when following")
+    p_tail.set_defaults(func=cmd_tail)
+
     p_st = sub.add_parser("status", help="report machines, buffer, dead letters")
     p_st.add_argument("--state-dir", required=True)
     p_st.set_defaults(func=cmd_status)
@@ -279,6 +295,46 @@ def cmd_show_identity(args) -> int:
     key = GatewayKey.load(key_file)
     print(f"gateway_id: {id_file.read_text(encoding='utf-8').strip()}")
     print(f"pubkey: ed25519:{key.public_key_b64()}")
+    return 0
+
+
+def cmd_tail(args) -> int:
+    """Stream the gateway's buffer to stdout, the way `tail -f` streams a log.
+
+    Read-only by construction: it never acks, so watching the stream cannot
+    make retention think data was delivered. Safe to run against a live
+    gateway - SQLite WAL allows concurrent readers.
+    """
+    db = pathlib.Path(args.state_dir) / "buffer.db"
+    if not db.exists():
+        print(f"no gateway buffer at {db}", file=sys.stderr)
+        return 1
+    store = Store(db)
+    if args.last:
+        # show the last N that are buffered, then continue from there
+        rows = store.tail_after(0, limit=10 ** 9, machine_id=args.machine)
+        cursor = rows[-args.last - 1][0] if len(rows) > args.last else 0
+    elif args.follow:
+        cursor = store.max_rowid()      # like `tail -f`: only what arrives now
+    else:
+        cursor = 0                      # one-shot: everything still buffered
+    try:
+        while True:
+            rows = store.tail_after(cursor, machine_id=args.machine)
+            for rowid, envelope in rows:
+                print(json.dumps(envelope, ensure_ascii=False), flush=True)
+                cursor = rowid
+            if not args.follow:
+                break
+            if not rows:
+                time.sleep(args.poll)
+    except KeyboardInterrupt:
+        pass
+    except BrokenPipeError:
+        # `omp-gateway tail | head` is ordinary usage
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    finally:
+        store.close()
     return 0
 
 

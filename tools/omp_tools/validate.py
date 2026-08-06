@@ -68,18 +68,39 @@ def main(argv: list[str] | None = None) -> int:
     if args.audit:
         return _run_audit(lines(), spec, args)
 
-    valid = 0
-    invalid = 0
-    by_schema: Counter[str] = Counter()
-    for lineno, line in enumerate(lines(), 1):
+    stats = {"valid": 0, "invalid": 0, "by_schema": Counter()}
+    # `omp-gateway tail | omp-validate` is the documented way to watch a new
+    # machine, and tail follows forever - so Ctrl-C must still report what was
+    # seen rather than dying with a traceback and no verdict.
+    try:
+        _validate_stream(lines(), spec, args, stats)
+    except KeyboardInterrupt:
+        print()          # past the ^C
+    return _report(stats)
+
+
+def _report(stats) -> int:
+    if stats["invalid"] == 0:
+        detail = ", ".join(f"{k} x{v}" for k, v in sorted(stats["by_schema"].items()))
+        print(f"\u2714 {stats['valid']} messages valid"
+              + (f" (schema: {detail})" if detail else ""))
+        return 0
+    print(f"{stats['valid']} valid, {stats['invalid']} invalid (details above)")
+    return 1
+
+
+def _validate_stream(line_iter, spec, args, stats) -> None:
+    """Validates each line, accumulating into `stats` so an interrupted run
+    can still be summarised by the caller."""
+    for lineno, line in enumerate(line_iter, 1):
         line = line.strip()
         if not line:
             continue
         try:
             envelope = json.loads(line)
         except json.JSONDecodeError as exc:
-            invalid += 1
-            print(f"✖ line {lineno}: not JSON ({exc.msg})")
+            stats["invalid"] += 1
+            print(f"\u2716 line {lineno}: not JSON ({exc.msg})")
             continue
         errors = validate_envelope(envelope, spec) if isinstance(envelope, dict) else [
             "not a JSON object"
@@ -92,24 +113,17 @@ def main(argv: list[str] | None = None) -> int:
             elif not verify_envelope_sig(envelope, args.pubkey):
                 errors = ["signature verification failed"]
         if errors:
-            invalid += 1
+            stats["invalid"] += 1
             if not args.quiet:
                 where = (
                     f"seq {envelope['seq']}"
                     if isinstance(envelope, dict) and isinstance(envelope.get("seq"), int)
                     else f"line {lineno}"
                 )
-                print(f"✖ {where}: {errors[0]}")
+                print(f"\u2716 {where}: {errors[0]}", flush=True)
         else:
-            valid += 1
-            by_schema[envelope["schema"]] += 1
-
-    if invalid == 0:
-        detail = ", ".join(f"{k} x{v}" for k, v in sorted(by_schema.items()))
-        print(f"✔ {valid} messages valid" + (f" (schema: {detail})" if detail else ""))
-        return 0
-    print(f"{valid} valid, {invalid} invalid (details above)")
-    return 1
+            stats["valid"] += 1
+            stats["by_schema"][envelope["schema"]] += 1
 
 
 def _run_audit(line_iter, spec, args) -> int:

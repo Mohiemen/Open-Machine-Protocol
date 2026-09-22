@@ -184,6 +184,25 @@ def main(argv: list[str] | None = None) -> int:
     p_st.add_argument("--state-dir", required=True)
     p_st.set_defaults(func=cmd_status)
 
+    p_ah = sub.add_parser(
+        "audit-host",
+        help="check this host against Hardening Guide s3 and report drift")
+    p_ah.add_argument("--state-dir", default=None,
+                      help="inspect the keypair here and store the drift "
+                           "baseline here")
+    p_ah.add_argument("--root", default="/",
+                      help="audit a filesystem tree other than this host's")
+    p_ah.add_argument("--service-user", default="omp",
+                      help="the user the gateway service runs as (default: omp)")
+    p_ah.add_argument("--save-baseline", action="store_true",
+                      help="record today's result as the baseline future runs "
+                           "compare against (requires --state-dir)")
+    p_ah.add_argument("--strict-unknown", action="store_true",
+                      help="exit non-zero when a Required check cannot be "
+                           "evaluated, not only when one fails")
+    p_ah.add_argument("--json", action="store_true", dest="as_json")
+    p_ah.set_defaults(func=cmd_audit_host)
+
     p_dl = sub.add_parser("dead-letters", help="print recent dead letters")
     p_dl.add_argument("--state-dir", required=True)
     p_dl.add_argument("--limit", type=int, default=20)
@@ -378,6 +397,45 @@ def cmd_status(args) -> int:
               f"({pr['reason']})")
     store.close()
     return 0
+
+
+def cmd_audit_host(args) -> int:
+    """Hardening Guide s3: "runs these checks and reports drift".
+
+    Exit codes are meant for cron: 0 clean, 1 drift only, 2 a Required check
+    failing. Unknowns are printed loudly but do not fail the run unless you
+    ask for --strict-unknown - on a host where half of /etc is invisible to
+    the auditing user, a wall of red teaches people to ignore the output.
+    """
+    from .core import hostaudit as ha
+
+    host = ha.Host(root=pathlib.Path(args.root),
+                   service_user=args.service_user)
+    checks = ha.run_checks(host, args.state_dir)
+    baseline = ha.load_baseline(args.state_dir)
+    drift_lines = ha.drift(baseline, checks) if baseline else []
+
+    if args.as_json:
+        print(json.dumps({
+            "checks": [vars(c) for c in checks],
+            "drift": drift_lines,
+            "baseline_seen": baseline is not None,
+        }, indent=2))
+    else:
+        print(ha.format_report(checks, drift_lines, baseline is not None))
+
+    if args.save_baseline:
+        if not args.state_dir:
+            print("--save-baseline needs --state-dir", file=sys.stderr)
+            return 2
+        print(f"baseline written to {ha.save_baseline(args.state_dir, checks)}")
+
+    required = [c for c in checks if c.requirement == ha.REQUIRED]
+    if any(c.status == ha.FAIL for c in required):
+        return 2
+    if args.strict_unknown and any(c.status == ha.UNKNOWN for c in required):
+        return 2
+    return 1 if drift_lines else 0
 
 
 def cmd_dead_letters(args) -> int:

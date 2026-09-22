@@ -175,10 +175,24 @@ outrank new features.
    not ack past what the destination accepted. Verifiable against a local
    HTTP server in-process.
 
-4. **`omp-gateway audit-host`** - [Hardening Guide s3](../../security/hardening-guide.md)
-   says it "runs these checks and reports drift; wire it into the weekly
-   rhythm". Checks the Required host items: SSH policy, unattended-upgrades,
-   the unprivileged service user, udev rules, dedicated-device assumption.
+4. ~~**`omp-gateway audit-host`**~~ - **done 2026-09-22**: seven checks over
+   a host tree (SSH policy including `sshd_config.d` drop-ins,
+   unattended-upgrades, the unprivileged service user, serial device-group
+   access, co-tenant detection, keypair mode, NTP sync), a stored baseline in
+   the state dir, and drift reporting that fires on an evidence change even
+   when the verdict holds - `AllowUsers ops` becoming `AllowUsers
+   ops,contractor` is still a pass and still something the weekly rhythm
+   should surface. Exit codes are shaped for cron: 0 clean, 1 drift only, 2 a
+   Required check failing. **A check that cannot be evaluated reports UNKNOWN
+   and never collapses into a pass** - the same discipline as `null`-not-`true`
+   in the DPP audit tool, because the dangerous failure mode here is auditing
+   a host where nothing is readable and getting a clean bill of health. Also
+   wrote `docs/security/examples/99-omp-serial.rules`, which the guide
+   referenced but the repo did not contain. Verified against this real
+   container (correctly reports docker/postgres co-tenancy and a chmod 644
+   keypair as drift), not only against fixtures. Originally from
+   [Hardening Guide s3](../../security/hardening-guide.md): "runs these checks
+   and reports drift; wire it into the weekly rhythm".
 
 5. **`omp-gateway verify-release`** - [Hardening Guide s6](../../security/hardening-guide.md)
    marks it **[Required]**: "Install OMP releases only from GitHub Releases
@@ -251,6 +265,7 @@ next contributor's PR gets no check. Fix before the queue above.
 | 2026-08-06 | Queue item 3 done: REST exporter (batched NDJSON, gzip, ack-only-after-2xx, refuses plaintext HTTP off-loopback). Verified against a live HTTP server that writes to disk before returning 200. The end-to-end run exposed a real defect the unit tests could not: the daemon drained after every emit, so the batching exporter sent one envelope per request - exports are now coalesced by a drain worker, and `--drain-interval` genuinely trades latency for batch size. 140 tests green. |
 | 2026-08-06 | Queue item 2 done: `omp-gateway tail` exists, so the loop first-real-machine s6 documents actually runs. It observes without acking - tailing must never let retention think data was delivered - and `omp-validate` now prints its summary on Ctrl-C instead of dying, which is what makes `tail | omp-validate` usable live. Testing the documented command found the first cut wrong: `--no-follow` started from 'now' and printed nothing. 125 tests green. |
 | 2026-08-06 | Queue item 1 done: the adapter transport pool exists, so several machines on one RS485 pair (or one Modbus TCP gateway) share a link and their transactions serialize. The unit of exclusion is the whole request/response round trip, because splitting it is what makes unit 1 read unit 2's reply - a failure that shows up as random CRC errors on real hardware. Verified with a negative control, not just a passing test. 119 tests green. |
+| 2026-09-22 | Queue item 4: `omp-gateway audit-host` - the host-posture check Hardening Guide s3 promised. Seven checks, a baseline in the state dir, and drift reporting sensitive to evidence changes and not only verdict flips. Unknown never reads as pass, and the report says so in words. Added the `99-omp-serial.rules` example the guide pointed at but the repo lacked. 165 tests green; lint clean; driver `all` green. |
 | 2026-08-06 | Added the Unblocked Work Queue after sweeping the docs against the implementation: four capabilities were documented as existing but never built (`tail`, `audit-host`, `verify-release`, the adapter transport pool). Sequenced them, recorded which unblocked items stay reserved for first-time contributors, and flagged that CI is currently not running - which outranks the whole queue. |
 | 2026-08-06 | Registry hot-reload ([#10](https://github.com/Mohiemen/Open-Machine-Protocol/issues/10)): `omp-gateway reload` signals a running gateway over SIGHUP; the new registry is validated in full - including that every named adapter loads - BEFORE anything is touched, so an operator pulling a bad file from git gets a refusal and an unchanged floor rather than an outage. Machines whose config is byte-identical are left running, so their seq continuity is never broken. Verified end to end against a live daemon. 113 tests green. |
 | 2026-08-06 | Track C (partial): retention pruning that can never outrun delivery - it prunes only past the SLOWEST configured exporter's cursor, so a stalled exporter fills the disk (loud) rather than losing evidence (silent); a removed exporter's stale cursor cannot pin the buffer forever; every prune is logged and shown in `status`. Plus the adapter restart policy from API s6 (crash isolation, exponential backoff, machine marked failed after --max-crashes) and probe timeouts, so one hung serial port cannot stall floor startup. CSV exporter deliberately left for [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) as a good-first-issue. 110 tests green. |

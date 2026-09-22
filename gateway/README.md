@@ -43,10 +43,17 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   in place. The new file is validated fully first and refused if invalid;
   unchanged machines keep streaming without a seq break.
 
+- **Host audit** - `omp-gateway audit-host --state-dir …` checks the
+  [Hardening Guide](../docs/docs/security/hardening-guide.md) s3 Required
+  items (SSH policy, unattended-upgrades, unprivileged service user, serial
+  device-group access, dedicated device) plus keypair permissions and NTP,
+  stores a baseline and reports **drift** against it. Exit 0 clean, 1 drift,
+  2 a Required check failing - so it belongs in cron. A check it cannot
+  evaluate says UNKNOWN; it never counts as a pass.
+
 ## Not here yet
 
 OPC UA exporter and CSV exporter (CSV is a
 [good first issue](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
-`audit-host`, release signature verification (`verify-release`), and retrofit
-OTA. Tracked in the
-[milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).
+release signature verification (`verify-release`), and retrofit OTA. Tracked
+in the [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

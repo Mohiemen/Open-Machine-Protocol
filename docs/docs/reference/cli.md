@@ -152,7 +152,8 @@ Edge gateway for adapters, validation, buffering, signing, and export.
 
 ```text
 usage: omp-gateway [-h] [--version]
-                   {run-once,install-service,show-identity,run,reload,status,dead-letters}
+                   {run-once,install-service,show-identity,run,reload,tail,
+                    status,audit-host,verify-release,dead-letters}
                    ...
 ```
 
@@ -163,7 +164,10 @@ usage: omp-gateway [-h] [--version]
 | `show-identity` | Print `gateway_id` and public key. |
 | `run` | Run the gateway from a registry. |
 | `reload` | Tell a running gateway to re-read its registry. |
+| `tail` | Stream the buffer as NDJSON without acking anything. |
 | `status` | Report machines, buffer, and dead letters. |
+| `audit-host` | Check the host against Hardening Guide s3 and report drift. |
+| `verify-release` | Verify a downloaded release artifact's minisign signature. |
 | `dead-letters` | Print recent dead letters. |
 
 ### `run-once`
@@ -260,6 +264,30 @@ usage: omp-gateway reload [-h] --state-dir STATE_DIR
 
 Tells a running gateway to re-read its registry.
 
+### `tail`
+
+```text
+usage: omp-gateway tail [-h] --state-dir STATE_DIR [--follow] [--no-follow]
+                        [--last N] [--machine MACHINE] [--poll POLL]
+```
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--follow`, `-f` | on | Keep streaming as new envelopes arrive. |
+| `--no-follow` | - | Print what is buffered and exit. Starts from the beginning. |
+| `--last N` | all | Start N envelopes back instead. |
+| `--machine` | all | Only this `machine_id`. |
+| `--poll` | `0.5` | Seconds between checks while following. |
+
+`tail` is **read-only**: it never advances an exporter cursor, so watching a
+stream cannot cause retention to prune data no exporter delivered.
+
+```sh
+$ omp-gateway tail --state-dir /var/lib/omp | omp-validate
+```
+
+Ctrl-C ends the pipeline with a validation summary rather than a traceback.
+
 ### `status`
 
 ```text
@@ -286,6 +314,82 @@ Example:
 ```sh
 $ omp-gateway dead-letters --state-dir /tmp/omp/state --limit 3
 ```
+
+### `audit-host`
+
+```text
+usage: omp-gateway audit-host [-h] [--state-dir STATE_DIR] [--root ROOT]
+                              [--service-user SERVICE_USER]
+                              [--save-baseline] [--strict-unknown] [--json]
+```
+
+Checks the [Hardening Guide](../security/hardening-guide.md) s3 Required host
+items - dedicated device, SSH policy, unattended-upgrades, the unprivileged
+service user, serial device-group access - plus keypair permissions (s4) and
+NTP sync. With `--state-dir` it stores a baseline and reports **drift** on
+later runs, including changes in the evidence behind a check that still
+passes.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--state-dir` | none | Inspect the keypair here, and store the drift baseline here. |
+| `--root` | `/` | Audit a different filesystem tree (testing, or an image). |
+| `--service-user` | `omp` | The user the gateway service runs as. |
+| `--save-baseline` | - | Record this result as the baseline. Needs `--state-dir`. |
+| `--strict-unknown` | - | Exit non-zero when a Required check cannot be evaluated. |
+| `--json` | - | Machine-readable output for monitoring. |
+
+| Exit | Meaning |
+|---|---|
+| `0` | No Required check failing, no drift. |
+| `1` | Drift since the baseline, nothing Required failing. |
+| `2` | A Required check is failing. |
+
+A check that cannot be evaluated prints `?` and is counted separately - it is
+**not** a pass. The report also names what it did not check (segmentation,
+broker ACLs, release verification), so a clean run is not a clean deployment.
+
+```sh
+$ omp-gateway audit-host --state-dir /var/lib/omp --save-baseline
+```
+
+### `verify-release`
+
+```text
+usage: omp-gateway verify-release [-h] [--signature SIGNATURE]
+                                  [--pubkey PUBKEY] [--checksums CHECKSUMS]
+                                  artifact
+```
+
+Verifies a downloaded release against a minisign signature
+([Hardening Guide](../security/hardening-guide.md) s6 **[Required]**). Both
+the prehashed (`ED`) and legacy (`Ed`) formats, and the trusted comment's own
+global signature - so a version string cannot be rewritten under a valid file
+signature.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--signature` | `<artifact>.minisig` | The signature file. |
+| `--pubkey` | none | The trusted public key. Required - no key ships yet. |
+| `--checksums` | none | A `SHA256SUMS` file to cross-check. |
+
+Obtain the public key through a channel **independent of the artifact**. A key
+downloaded beside the file it signs proves only that one party controlled
+both. This command never fetches a key for you.
+
+Exit is `0` only when a signature was checked and passed. No key, no
+signature file, or an unreadable one is exit `1` with the reason - "cannot
+verify" never looks like "verified".
+
+```sh
+$ omp-gateway verify-release omp-gateway-0.1.0.tar.gz --pubkey omp-release.pub
+✔ omp-gateway-0.1.0.tar.gz verified
+  key      9C66E4CFE77177E2  (minisign public key 9C66E4CFE77177E2)
+  comment  OMP 0.1.0 tag v0.1.0 built 2026-09-24
+  sha256   22020adc360051cc624c3954c22d28e1f10519d7fefe35ea2f70ce0519bc8af9
+```
+
+An unsigned `SHA256SUMS` is reported as adding no provenance, not as a pass.
 
 ## See also
 

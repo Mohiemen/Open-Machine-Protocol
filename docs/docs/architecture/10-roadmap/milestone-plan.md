@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Living document |
 | **Location** | docs/architecture/10-roadmap/milestone-plan.md |
-| **Last updated** | 2026-08-06 |
+| **Last updated** | 2026-09-24 |
 | **Rule** | This file MUST be updated in the same PR as any change that completes, adds, reorders, or invalidates a roadmap item. A milestone is not "achieved" until it is checked off here with a date. Stale roadmaps are bugs - file them like bugs. |
 
 This is the single place where the project's plans and their real status meet.
@@ -210,10 +210,15 @@ would empty it:
 |---|---|
 | `omp-sniff` pcap mode | [#3](https://github.com/Mohiemen/Open-Machine-Protocol/issues/3) |
 | CSV exporter | [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) |
-| CLI reference page | [#5](https://github.com/Mohiemen/Open-Machine-Protocol/issues/5) |
 | Grafana visual verification | [#6](https://github.com/Mohiemen/Open-Machine-Protocol/issues/6) |
 | Bangla first-real-machine | [#7](https://github.com/Mohiemen/Open-Machine-Protocol/issues/7) |
 | Modbus register maps | [#8](https://github.com/Mohiemen/Open-Machine-Protocol/issues/8) |
+
+**The on-ramp works**: the CLI reference page (#5) was claimed and delivered
+by an outside contributor ([PR #14](https://github.com/Mohiemen/Open-Machine-Protocol/pull/14),
+merged 2026-09-15) - the project's first contribution from someone other than
+the maintainer. Six reserved items became five without anyone here touching
+it.
 
 If no one claims one within a reasonable window, it stops being an on-ramp
 and becomes a gap - take it then.
@@ -229,10 +234,16 @@ tasks).
 
 ### Not on the roadmap but ahead of all of it
 
-**CI is not running.** Pushes stopped creating workflow runs after
-2026-08-06 17:25 and the available token cannot dispatch one. Until an owner
-resolves it, "conformance is the bar" in CONTRIBUTING is unenforced and the
-next contributor's PR gets no check. Fix before the queue above.
+**CI runs again, and it caught a real bug** *(resolved 2026-09-24)*. Workflow
+runs resumed by 2026-09-15. They were **failing** - two `test_reload` cases
+red on `main` for nine days, and nobody looked, which is the same failure as
+not having CI at all. Root cause: this project's dev container sets
+`PYTHONUNBUFFERED=1`; the GitHub runner and a real gateway do not. That
+variable was hiding a missing `flush()` in the stdout exporter - it acked
+envelopes that existed only in its own process buffer, so a kill or a power
+cut lost data the cursor had already recorded as delivered. At-most-once
+wearing at-least-once's name, on the exporter the quickstart uses. Fixed,
+with a negative control, and `AGENTS.md` now documents the trap.
 
 ---
 
@@ -265,6 +276,8 @@ next contributor's PR gets no check. Fix before the queue above.
 | 2026-08-06 | Queue item 3 done: REST exporter (batched NDJSON, gzip, ack-only-after-2xx, refuses plaintext HTTP off-loopback). Verified against a live HTTP server that writes to disk before returning 200. The end-to-end run exposed a real defect the unit tests could not: the daemon drained after every emit, so the batching exporter sent one envelope per request - exports are now coalesced by a drain worker, and `--drain-interval` genuinely trades latency for batch size. 140 tests green. |
 | 2026-08-06 | Queue item 2 done: `omp-gateway tail` exists, so the loop first-real-machine s6 documents actually runs. It observes without acking - tailing must never let retention think data was delivered - and `omp-validate` now prints its summary on Ctrl-C instead of dying, which is what makes `tail | omp-validate` usable live. Testing the documented command found the first cut wrong: `--no-follow` started from 'now' and printed nothing. 125 tests green. |
 | 2026-08-06 | Queue item 1 done: the adapter transport pool exists, so several machines on one RS485 pair (or one Modbus TCP gateway) share a link and their transactions serialize. The unit of exclusion is the whole request/response round trip, because splitting it is what makes unit 1 read unit 2's reply - a failure that shows up as random CRC errors on real hardware. Verified with a negative control, not just a passing test. 119 tests green. |
+| 2026-09-24 | Fixed the CI failure that had been red on `main` since 2026-09-15, and it was not a test bug. The stdout exporter wrote without flushing, so `drain()` acked envelopes still sitting in the process buffer - a kill or a power cut lost data the cursor called delivered, and `omp-gateway run > floor.ndjson` looked dead for its first 8 KiB. It passed locally only because this dev container sets `PYTHONUNBUFFERED=1`, which CI and real gateways do not. Flush before ack, flush failures no longer ack, `test_reload` now strips the variable from the daemon's environment so it cannot be masked again, and `AGENTS.md` documents the trap. Negative control: reverting the flush fails all four tests. Verified against a real redirected daemon run. 167 tests green. |
+| 2026-09-24 | First outside contribution merged: the CLI reference page ([#5](https://github.com/Mohiemen/Open-Machine-Protocol/issues/5), [PR #14](https://github.com/Mohiemen/Open-Machine-Protocol/pull/14)) by @slegarraga. Removed from the reserved table - the on-ramp did what it was for. |
 | 2026-09-22 | Queue item 4: `omp-gateway audit-host` - the host-posture check Hardening Guide s3 promised. Seven checks, a baseline in the state dir, and drift reporting sensitive to evidence changes and not only verdict flips. Unknown never reads as pass, and the report says so in words. Added the `99-omp-serial.rules` example the guide pointed at but the repo lacked. 165 tests green; lint clean; driver `all` green. |
 | 2026-08-06 | Added the Unblocked Work Queue after sweeping the docs against the implementation: four capabilities were documented as existing but never built (`tail`, `audit-host`, `verify-release`, the adapter transport pool). Sequenced them, recorded which unblocked items stay reserved for first-time contributors, and flagged that CI is currently not running - which outranks the whole queue. |
 | 2026-08-06 | Registry hot-reload ([#10](https://github.com/Mohiemen/Open-Machine-Protocol/issues/10)): `omp-gateway reload` signals a running gateway over SIGHUP; the new registry is validated in full - including that every named adapter loads - BEFORE anything is touched, so an operator pulling a bad file from git gets a refusal and an unchanged floor rather than an outage. Machines whose config is byte-identical are left running, so their seq continuity is never broken. Verified end to end against a live daemon. 113 tests green. |

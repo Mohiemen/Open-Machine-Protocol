@@ -79,3 +79,22 @@ root, links keep working as authored.
 - Branch from `main`; one logical change per PR.
 - Commit messages explain *why*, not just what.
 - Never commit secrets, real factory data, or unscrubbed protocol captures.
+
+## Environment traps
+
+- **`PYTHONUNBUFFERED`**: some dev containers set it to `1`. CI does not, and
+  neither does a factory gateway. With it set, a missing `flush()` is
+  invisible - output appears anyway - so tests that watch a subprocess write
+  to a file pass locally and fail on the runner. This cost a week of red CI
+  on `main` once (the stdout exporter acked envelopes it had only buffered).
+  Before believing a green local run of anything that spawns the gateway:
+
+  ```bash
+  env -u PYTHONUNBUFFERED pytest tools/tests gateway/tests -q
+  ```
+
+  `gateway/tests/test_reload.py` now strips the variable from the daemon's
+  environment itself, so that one test tells the truth either way.
+- **Green tests are not a green CI.** Check the actual run after pushing;
+  `mergeable_state: clean` only means no required check is configured, not
+  that anything passed.

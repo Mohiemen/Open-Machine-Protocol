@@ -203,6 +203,21 @@ def main(argv: list[str] | None = None) -> int:
     p_ah.add_argument("--json", action="store_true", dest="as_json")
     p_ah.set_defaults(func=cmd_audit_host)
 
+    p_vr = sub.add_parser(
+        "verify-release",
+        help="verify a downloaded release artifact's minisign signature")
+    p_vr.add_argument("artifact", help="the file you downloaded")
+    p_vr.add_argument("--signature", default=None,
+                      help="the .minisig file (default: <artifact>.minisig)")
+    p_vr.add_argument("--pubkey", default=None,
+                      help="path to the trusted minisign public key; "
+                           "required until a release key ships with the "
+                           "gateway")
+    p_vr.add_argument("--checksums", default=None,
+                      help="a SHA256SUMS file to cross-check (proves nothing "
+                           "on its own - sign it too)")
+    p_vr.set_defaults(func=cmd_verify_release)
+
     p_dl = sub.add_parser("dead-letters", help="print recent dead letters")
     p_dl.add_argument("--state-dir", required=True)
     p_dl.add_argument("--limit", type=int, default=20)
@@ -436,6 +451,82 @@ def cmd_audit_host(args) -> int:
     if args.strict_unknown and any(c.status == ha.UNKNOWN for c in required):
         return 2
     return 1 if drift_lines else 0
+
+
+def cmd_verify_release(args) -> int:
+    """Hardening Guide s6 [Required]: verify before you install.
+
+    Exit 0 only when a signature by the trusted key was actually checked and
+    passed. Every other outcome - no key pinned, no signature file, a
+    mismatch - is non-zero, because "I could not check" and "it is fine" must
+    never look the same to the script that gates a rollout.
+    """
+    from .core import release as rel
+
+    artifact = pathlib.Path(args.artifact)
+    if not artifact.exists():
+        print(f"\u2716 no such file: {artifact}", file=sys.stderr)
+        return 1
+
+    key_path = pathlib.Path(args.pubkey) if args.pubkey else rel.PINNED_KEY
+    if not key_path.exists():
+        where = ("this build of omp-gateway pins no release key yet"
+                 if not args.pubkey else f"no key file at {key_path}")
+        print(f"\u2716 cannot verify: {where}.\n"
+              "  Pass --pubkey with the key from the project's release notes, "
+              "obtained\n"
+              "  through a channel INDEPENDENT of the artifact. A key "
+              "downloaded alongside\n"
+              "  the file it signs proves nothing.", file=sys.stderr)
+        return 1
+
+    sig_path = (pathlib.Path(args.signature) if args.signature
+                else artifact.with_name(artifact.name + ".minisig"))
+    if not sig_path.exists():
+        print(f"\u2716 cannot verify: no signature file at {sig_path}.\n"
+              "  An unsigned release is not a release you install on a "
+              "gateway (Hardening Guide s6).", file=sys.stderr)
+        return 1
+
+    try:
+        pubkey = rel.parse_public_key(key_path.read_text(encoding="utf-8"))
+        signature = rel.parse_signature(sig_path.read_text(encoding="utf-8"))
+        trusted = rel.verify_artifact(artifact, signature, pubkey)
+    except (rel.VerifyError, OSError, UnicodeError) as exc:
+        print(f"\u2716 {exc}", file=sys.stderr)
+        return 1
+
+    print(f"\u2714 {artifact.name} verified")
+    print(f"  key      {pubkey.key_id_hex()}"
+          + (f"  ({pubkey.untrusted_comment})" if pubkey.untrusted_comment else ""))
+    print(f"  comment  {trusted}")
+    print(f"  sha256   {rel.sha256_file(artifact)}")
+
+    if args.checksums:
+        try:
+            sums = rel.parse_checksums(
+                pathlib.Path(args.checksums).read_text(encoding="utf-8"))
+            rel.verify_checksum(artifact, sums)
+        except (rel.VerifyError, OSError, UnicodeError) as exc:
+            print(f"\u2716 checksum cross-check failed: {exc}", file=sys.stderr)
+            return 1
+        sums_sig = pathlib.Path(args.checksums + ".minisig")
+        if sums_sig.exists():
+            try:
+                rel.verify_artifact(pathlib.Path(args.checksums),
+                                    rel.parse_signature(
+                                        sums_sig.read_text(encoding="utf-8")),
+                                    pubkey)
+            except rel.VerifyError as exc:
+                print(f"\u2716 the checksum file's own signature failed: {exc}",
+                      file=sys.stderr)
+                return 1
+            print("  checksums agree, and the checksum file is signed")
+        else:
+            print("  checksums agree - but the checksum file is UNSIGNED, so "
+                  "it adds no\n           provenance; anyone who could "
+                  "replace the artifact could replace it too")
+    return 0
 
 
 def cmd_dead_letters(args) -> int:

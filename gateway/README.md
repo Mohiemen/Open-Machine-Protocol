@@ -51,9 +51,19 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   2 a Required check failing - so it belongs in cron. A check it cannot
   evaluate says UNKNOWN; it never counts as a pass.
 
+- **Release verification** - `omp-gateway verify-release <artifact> --pubkey
+  <key>` checks a minisign signature before you install anything
+  ([Hardening Guide](../docs/docs/security/hardening-guide.md) s6
+  [Required]). Both minisign formats, and the trusted comment's own global
+  signature, so a valid-looking version string cannot be forged. It never
+  fetches a key: one that travels with the artifact proves nothing. Exit 0
+  only when a signature was actually checked and passed - "cannot verify"
+  is exit 1, never a pass. **No OMP release key exists yet**, so `--pubkey`
+  is required until the project pins one.
+
 ## Not here yet
 
 OPC UA exporter and CSV exporter (CSV is a
 [good first issue](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
-release signature verification (`verify-release`), and retrofit OTA. Tracked
-in the [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).
+and retrofit OTA. Tracked in the
+[milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

@@ -1,0 +1,27 @@
+# /etc/udev/rules.d/99-omp-serial.rules
+#
+# Hardening Guide s3 [Required]: the gateway service runs as the unprivileged
+# `omp` user with device-group access to its serial ports only. If an adapter
+# cannot open its port, fix it HERE - do not run the service as root.
+#
+# Install:
+#   sudo groupadd -f omp-serial
+#   sudo usermod -aG omp-serial omp
+#   sudo cp 99-omp-serial.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Verify:  omp-gateway audit-host   (serial_access check)
+
+# USB serial bridges commonly used for RS-485 (FTDI, Prolific, CP210x, CH340).
+SUBSYSTEM=="tty", SUBSYSTEMS=="usb", GROUP="omp-serial", MODE="0660"
+
+# On-board UARTs on a Pi-class board.
+KERNEL=="ttyAMA[0-9]*", GROUP="omp-serial", MODE="0660"
+KERNEL=="ttyS[0-9]*",   GROUP="omp-serial", MODE="0660"
+
+# Stable names per converter, so a reboot that re-enumerates the USB bus does
+# not swap two machines' ports. Fill in the serial from `udevadm info
+# --name=/dev/ttyUSB0 | grep ID_SERIAL_SHORT` and point the registry at the
+# symlink instead of /dev/ttyUSB0.
+#SUBSYSTEM=="tty", ATTRS{serial}=="AB0KXYZW", SYMLINK+="omp/loom-line-1", \
+#  GROUP="omp-serial", MODE="0660"

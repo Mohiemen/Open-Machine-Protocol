@@ -35,7 +35,7 @@ In priority order for typical deployments:
 - **[Required]** Automatic security updates for the OS (`unattended-upgrades`); OMP itself updates deliberately (below), the OS updates automatically.
 - **[Required]** The gateway service runs as the unprivileged `omp` user the installer creates, with device-group access to its serial ports only. Do not run as root to "fix" a permissions error; fix the udev rule (`docs/security/examples/99-omp-serial.rules`).
 - **[Recommended]** Disk encryption is usually impractical on headless factory Pis (unattended reboot); instead treat physical access seriously - locked enclosure, and see key handling below for what an attacker with the SD card gets.
-- **[Recommended]** `omp-gateway audit-host` runs these checks and reports drift; wire it into the weekly rhythm.
+- **[Recommended]** `omp-gateway audit-host --state-dir /var/lib/omp` runs these checks and reports drift against a stored baseline (`--save-baseline` on first run); wire it into the weekly rhythm. It exits 0 clean, 1 for drift, 2 when a Required check fails, so cron can alert on it. A check it cannot evaluate reports UNKNOWN - read that as "unverified", never as "fine".
 
 ## 4. Keys and Data Integrity
 
@@ -52,7 +52,7 @@ In priority order for typical deployments:
 
 ## 6. Updates and Supply Chain
 
-- **[Required]** Install OMP releases only from GitHub Releases with signature verification (`omp-gateway verify-release` or manual minisign check per release notes). Never `pip install` onto a production gateway from a branch.
+- **[Required]** Install OMP releases only from GitHub Releases with signature verification - `omp-gateway verify-release <artifact> --pubkey <key>`, or a manual minisign check per release notes. Never `pip install` onto a production gateway from a branch. Get the public key through a channel **independent of the artifact**: a key downloaded beside the file it signs proves only that one party controlled both, which is precisely an attacker's position. `verify-release` therefore never fetches a key, and exits non-zero when it cannot check rather than reporting a pass. *(The project has not yet published a release key; until it does, there is nothing to verify against and this item cannot be satisfied.)*
 - **[Required]** Retrofit OTA updates only via the gateway's staged/rollback mechanism; nodes accept images signed by the release key by default - keep it that way.
 - **[Recommended]** Stage releases on one gateway for a week before fleet rollout. Boring, effective.
 

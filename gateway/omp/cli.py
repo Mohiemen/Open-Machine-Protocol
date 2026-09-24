@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import os
 import pathlib
 import signal
@@ -151,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     p_daemon.add_argument("--max-crashes", type=int, default=5,
                           help="mark a machine failed after this many adapter "
                                "crashes (default 5)")
+    p_daemon.add_argument("--drain-interval", type=float, default=0.2,
+                          help="seconds between export passes; higher batches "
+                               "more per request, lower is prompter (default 0.2)")
     p_daemon.add_argument("--probe-timeout", type=float, default=30,
                           help="seconds a probe() may take before the machine "
                                "is marked failed (default 30)")
@@ -161,9 +165,58 @@ def main(argv: list[str] | None = None) -> int:
     p_rl.add_argument("--state-dir", required=True)
     p_rl.set_defaults(func=cmd_reload)
 
+    p_tail = sub.add_parser("tail",
+                            help="stream buffered envelopes as NDJSON "
+                                 "(observe only - never acks)")
+    p_tail.add_argument("--state-dir", required=True)
+    p_tail.add_argument("--follow", "-f", action="store_true", default=True,
+                        help="keep streaming as new envelopes arrive (default)")
+    p_tail.add_argument("--no-follow", dest="follow", action="store_false",
+                        help="print what is buffered now and exit")
+    p_tail.add_argument("--last", type=int, default=0, metavar="N",
+                        help="start by printing the last N buffered envelopes")
+    p_tail.add_argument("--machine", default=None, help="only this machine_id")
+    p_tail.add_argument("--poll", type=float, default=0.5,
+                        help="seconds between polls when following")
+    p_tail.set_defaults(func=cmd_tail)
+
     p_st = sub.add_parser("status", help="report machines, buffer, dead letters")
     p_st.add_argument("--state-dir", required=True)
     p_st.set_defaults(func=cmd_status)
+
+    p_ah = sub.add_parser(
+        "audit-host",
+        help="check this host against Hardening Guide s3 and report drift")
+    p_ah.add_argument("--state-dir", default=None,
+                      help="inspect the keypair here and store the drift "
+                           "baseline here")
+    p_ah.add_argument("--root", default="/",
+                      help="audit a filesystem tree other than this host's")
+    p_ah.add_argument("--service-user", default="omp",
+                      help="the user the gateway service runs as (default: omp)")
+    p_ah.add_argument("--save-baseline", action="store_true",
+                      help="record today's result as the baseline future runs "
+                           "compare against (requires --state-dir)")
+    p_ah.add_argument("--strict-unknown", action="store_true",
+                      help="exit non-zero when a Required check cannot be "
+                           "evaluated, not only when one fails")
+    p_ah.add_argument("--json", action="store_true", dest="as_json")
+    p_ah.set_defaults(func=cmd_audit_host)
+
+    p_vr = sub.add_parser(
+        "verify-release",
+        help="verify a downloaded release artifact's minisign signature")
+    p_vr.add_argument("artifact", help="the file you downloaded")
+    p_vr.add_argument("--signature", default=None,
+                      help="the .minisig file (default: <artifact>.minisig)")
+    p_vr.add_argument("--pubkey", default=None,
+                      help="path to the trusted minisign public key; "
+                           "required until a release key ships with the "
+                           "gateway")
+    p_vr.add_argument("--checksums", default=None,
+                      help="a SHA256SUMS file to cross-check (proves nothing "
+                           "on its own - sign it too)")
+    p_vr.set_defaults(func=cmd_verify_release)
 
     p_dl = sub.add_parser("dead-letters", help="print recent dead letters")
     p_dl.add_argument("--state-dir", required=True)
@@ -282,6 +335,46 @@ def cmd_show_identity(args) -> int:
     return 0
 
 
+def cmd_tail(args) -> int:
+    """Stream the gateway's buffer to stdout, the way `tail -f` streams a log.
+
+    Read-only by construction: it never acks, so watching the stream cannot
+    make retention think data was delivered. Safe to run against a live
+    gateway - SQLite WAL allows concurrent readers.
+    """
+    db = pathlib.Path(args.state_dir) / "buffer.db"
+    if not db.exists():
+        print(f"no gateway buffer at {db}", file=sys.stderr)
+        return 1
+    store = Store(db)
+    if args.last:
+        # show the last N that are buffered, then continue from there
+        rows = store.tail_after(0, limit=10 ** 9, machine_id=args.machine)
+        cursor = rows[-args.last - 1][0] if len(rows) > args.last else 0
+    elif args.follow:
+        cursor = store.max_rowid()      # like `tail -f`: only what arrives now
+    else:
+        cursor = 0                      # one-shot: everything still buffered
+    try:
+        while True:
+            rows = store.tail_after(cursor, machine_id=args.machine)
+            for rowid, envelope in rows:
+                print(json.dumps(envelope, ensure_ascii=False), flush=True)
+                cursor = rowid
+            if not args.follow:
+                break
+            if not rows:
+                time.sleep(args.poll)
+    except KeyboardInterrupt:
+        pass
+    except BrokenPipeError:
+        # `omp-gateway tail | head` is ordinary usage
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    finally:
+        store.close()
+    return 0
+
+
 def cmd_reload(args) -> int:
     """Signal a running gateway to re-read its registry (SIGHUP).
 
@@ -318,6 +411,121 @@ def cmd_status(args) -> int:
         print(f"  pruned {pr['rows']} envelope(s) at {pr['pruned_at']} "
               f"({pr['reason']})")
     store.close()
+    return 0
+
+
+def cmd_audit_host(args) -> int:
+    """Hardening Guide s3: "runs these checks and reports drift".
+
+    Exit codes are meant for cron: 0 clean, 1 drift only, 2 a Required check
+    failing. Unknowns are printed loudly but do not fail the run unless you
+    ask for --strict-unknown - on a host where half of /etc is invisible to
+    the auditing user, a wall of red teaches people to ignore the output.
+    """
+    from .core import hostaudit as ha
+
+    host = ha.Host(root=pathlib.Path(args.root),
+                   service_user=args.service_user)
+    checks = ha.run_checks(host, args.state_dir)
+    baseline = ha.load_baseline(args.state_dir)
+    drift_lines = ha.drift(baseline, checks) if baseline else []
+
+    if args.as_json:
+        print(json.dumps({
+            "checks": [vars(c) for c in checks],
+            "drift": drift_lines,
+            "baseline_seen": baseline is not None,
+        }, indent=2))
+    else:
+        print(ha.format_report(checks, drift_lines, baseline is not None))
+
+    if args.save_baseline:
+        if not args.state_dir:
+            print("--save-baseline needs --state-dir", file=sys.stderr)
+            return 2
+        print(f"baseline written to {ha.save_baseline(args.state_dir, checks)}")
+
+    required = [c for c in checks if c.requirement == ha.REQUIRED]
+    if any(c.status == ha.FAIL for c in required):
+        return 2
+    if args.strict_unknown and any(c.status == ha.UNKNOWN for c in required):
+        return 2
+    return 1 if drift_lines else 0
+
+
+def cmd_verify_release(args) -> int:
+    """Hardening Guide s6 [Required]: verify before you install.
+
+    Exit 0 only when a signature by the trusted key was actually checked and
+    passed. Every other outcome - no key pinned, no signature file, a
+    mismatch - is non-zero, because "I could not check" and "it is fine" must
+    never look the same to the script that gates a rollout.
+    """
+    from .core import release as rel
+
+    artifact = pathlib.Path(args.artifact)
+    if not artifact.exists():
+        print(f"\u2716 no such file: {artifact}", file=sys.stderr)
+        return 1
+
+    key_path = pathlib.Path(args.pubkey) if args.pubkey else rel.PINNED_KEY
+    if not key_path.exists():
+        where = ("this build of omp-gateway pins no release key yet"
+                 if not args.pubkey else f"no key file at {key_path}")
+        print(f"\u2716 cannot verify: {where}.\n"
+              "  Pass --pubkey with the key from the project's release notes, "
+              "obtained\n"
+              "  through a channel INDEPENDENT of the artifact. A key "
+              "downloaded alongside\n"
+              "  the file it signs proves nothing.", file=sys.stderr)
+        return 1
+
+    sig_path = (pathlib.Path(args.signature) if args.signature
+                else artifact.with_name(artifact.name + ".minisig"))
+    if not sig_path.exists():
+        print(f"\u2716 cannot verify: no signature file at {sig_path}.\n"
+              "  An unsigned release is not a release you install on a "
+              "gateway (Hardening Guide s6).", file=sys.stderr)
+        return 1
+
+    try:
+        pubkey = rel.parse_public_key(key_path.read_text(encoding="utf-8"))
+        signature = rel.parse_signature(sig_path.read_text(encoding="utf-8"))
+        trusted = rel.verify_artifact(artifact, signature, pubkey)
+    except (rel.VerifyError, OSError, UnicodeError) as exc:
+        print(f"\u2716 {exc}", file=sys.stderr)
+        return 1
+
+    print(f"\u2714 {artifact.name} verified")
+    print(f"  key      {pubkey.key_id_hex()}"
+          + (f"  ({pubkey.untrusted_comment})" if pubkey.untrusted_comment else ""))
+    print(f"  comment  {trusted}")
+    print(f"  sha256   {rel.sha256_file(artifact)}")
+
+    if args.checksums:
+        try:
+            sums = rel.parse_checksums(
+                pathlib.Path(args.checksums).read_text(encoding="utf-8"))
+            rel.verify_checksum(artifact, sums)
+        except (rel.VerifyError, OSError, UnicodeError) as exc:
+            print(f"\u2716 checksum cross-check failed: {exc}", file=sys.stderr)
+            return 1
+        sums_sig = pathlib.Path(args.checksums + ".minisig")
+        if sums_sig.exists():
+            try:
+                rel.verify_artifact(pathlib.Path(args.checksums),
+                                    rel.parse_signature(
+                                        sums_sig.read_text(encoding="utf-8")),
+                                    pubkey)
+            except rel.VerifyError as exc:
+                print(f"\u2716 the checksum file's own signature failed: {exc}",
+                      file=sys.stderr)
+                return 1
+            print("  checksums agree, and the checksum file is signed")
+        else:
+            print("  checksums agree - but the checksum file is UNSIGNED, so "
+                  "it adds no\n           provenance; anyone who could "
+                  "replace the artifact could replace it too")
     return 0
 
 
@@ -376,13 +584,16 @@ def cmd_run(args) -> int:
             stop_evt.set()
             return False
         return True
+    from .core.transports import TransportPool
+
+    pool = TransportPool()          # shared: machines on one bus share a link
     running: dict[str, dict] = {}   # machine_id -> {adapter, thread, spec}
 
     def start_machine(m: dict) -> bool:
         """Probe, announce, and supervise one machine. False if it failed."""
         adapter_dir = pathlib.Path(args.adapters_dir) / m["adapter"]
         cls = load_adapter_class(str(adapter_dir))
-        adapter = cls(config=m["config"])
+        adapter = cls(config=m["config"], transport_pool=pool)
         machine_id = m["machine_id"]
         try:
             info = _probe_with_timeout(adapter, m["config"], args.probe_timeout)
@@ -407,8 +618,7 @@ def cmd_run(args) -> int:
 
         def emit(body, _mid=machine_id, _adapter=adapter):
             engine.process(_mid, body)
-            if not drain():
-                _adapter.stop()   # destination gone; wind this adapter down
+            work.set()            # coalesced by the drain worker below
 
         t = threading.Thread(target=_supervise, daemon=True,
                              name=f"adapter-{machine_id}",
@@ -423,6 +633,34 @@ def cmd_run(args) -> int:
         if entry:
             entry["adapter"].stop()
             entry["thread"].join(timeout=10)
+            entry["adapter"].release_transports()
+
+    work = threading.Event()
+
+    def drain_worker():
+        """Coalesce exports instead of draining once per envelope.
+
+        Draining inline on every emit means a batching exporter never sees a
+        batch - the REST exporter would POST one envelope per request, which
+        is exactly what "POSTs batched NDJSON" is meant to avoid. Waking on a
+        short interval batches under load while staying prompt when idle.
+        """
+        while not stop_evt.is_set():
+            work.wait(args.drain_interval)   # wake on new data, or tick anyway
+            work.clear()
+            if not drain():
+                stop_evt.set()
+                return
+            # Rate-limit to at most one pass per interval. Without this the
+            # worker wakes on every emit and a batching exporter still sees
+            # one envelope per request; with it, everything arriving inside
+            # the window ships together. Worst-case export latency is one
+            # interval, which is the trade the flag documents.
+            stop_evt.wait(args.drain_interval)
+
+    drain_thread = threading.Thread(target=drain_worker, daemon=True,
+                                    name="drain")
+    drain_thread.start()
 
     reload_requested = threading.Event()
     pidfile = state / "gateway.pid"
@@ -496,7 +734,11 @@ def cmd_run(args) -> int:
         pass
     for machine_id in list(running):
         stop_machine(machine_id)
+    stop_evt.set()
+    work.set()
+    drain_thread.join(timeout=5)
     drain()
+    pool.close_all()
     pidfile.unlink(missing_ok=True)
     store.close()
     # if stdout is a closed pipe, Python's exit-time flush raises again -
@@ -532,9 +774,23 @@ def _build_exporters(registry: dict):
             built.append(MqttExporter(m.group(1), int(m.group(2) or 1883),
                                       e.get("topic_prefix", "omp"),
                                       locations=locations))
+        elif e["type"] == "rest":
+            from .exporters.rest import RestConfigError, RestExporter
+
+            try:
+                built.append(RestExporter(
+                    e["url"],
+                    batch_size=e.get("batch_size", 100),
+                    timeout_s=e.get("timeout_s", 30),
+                    headers=e.get("headers"),
+                    allow_plaintext_local=e.get("allow_plaintext_local", False),
+                    gzip_body=e.get("gzip", True),
+                ))
+            except RestConfigError as exc:
+                raise SystemExit(f"rest exporter: {exc}") from None
         else:
             raise SystemExit(f"unsupported exporter type {e['type']!r} "
-                             "(REST/OPC UA/CSV are roadmap)")
+                             "(OPC UA is roadmap; CSV is issue #4)")
     return built
 
 

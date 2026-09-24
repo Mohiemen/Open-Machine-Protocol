@@ -44,8 +44,17 @@ class StdoutExporter(Exporter):
     def publish(self, envelope: dict) -> None:
         try:
             self.stream.write(json.dumps(envelope, ensure_ascii=False) + "\n")
+            # Flush before drain() acks. Python block-buffers 8 KiB whenever
+            # stdout is a file or a pipe rather than a terminal, so without
+            # this the cursor records "delivered" while the bytes are still
+            # in this process's memory. A kill - or the power loss the buffer
+            # exists to survive - then loses them, turning at-least-once into
+            # at-most-once with nothing in the log to say so. It also made
+            # `omp-gateway run > floor.ndjson` look dead for its first 8 KiB.
+            self.stream.flush()
         except BrokenPipeError as exc:
             # `omp-gateway run | head` is ordinary usage, not an error - but
             # the envelope was NOT delivered, so surface it instead of letting
-            # drain() ack it.
+            # drain() ack it. The pipe can also close between the write and
+            # the flush, which is why both are inside this try.
             raise ExporterClosed("stdout pipe closed") from exc

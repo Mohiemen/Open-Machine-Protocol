@@ -98,6 +98,9 @@ def test_closed_stdout_pipe_does_not_ack_undelivered(tmp_path):
         def write(self, _):
             raise BrokenPipeError(32, "Broken pipe")
 
+        def flush(self):
+            raise BrokenPipeError(32, "Broken pipe")
+
     exp = StdoutExporter(stream=ClosedPipe())
     with pytest.raises(ExporterClosed):
         exp.drain(store)
@@ -120,3 +123,54 @@ def test_two_exporters_independent_cursors(tmp_path):
     a, b = Named("a"), Named("b")
     assert a.drain(store) == 1
     assert b.drain(store) == 1, "each exporter gets its own cursor"
+
+
+def test_stdout_exporter_flushes_before_it_acks(tmp_path):
+    """The bytes must be out of this process before the cursor moves.
+
+    Python block-buffers 8 KiB when stdout is a file, so an exporter that
+    writes without flushing acks envelopes that exist only in its own memory.
+    A kill at that moment - the power loss the WAL buffer exists to survive -
+    loses them silently, which is at-most-once wearing at-least-once's name.
+
+    This test reads the file from a SEPARATE handle, so nothing but a real
+    flush can make the data appear.
+    """
+    from omp.exporters.base import StdoutExporter
+
+    store = Store(tmp_path / "b.db")
+    engine = Engine("gw-test-01", store)
+    engine.process("m-one-01", event())
+
+    sink = tmp_path / "out.ndjson"
+    with open(sink, "w", encoding="utf-8") as fh:
+        exp = StdoutExporter(stream=fh)
+        exp.drain(store)
+        on_disk = sink.read_text(encoding="utf-8")
+
+    assert "m-one-01" in on_disk, (
+        "envelope was acked while still sitting in the process buffer")
+    assert not store.pending(exp.name)
+
+
+def test_flush_failure_does_not_ack(tmp_path):
+    """A pipe can close between the write and the flush - the envelope is
+    just as undelivered as if the write had failed."""
+    import pytest
+    from omp.exporters.base import ExporterClosed, StdoutExporter
+
+    store = Store(tmp_path / "b.db")
+    engine = Engine("gw-test-01", store)
+    engine.process("m-one-01", event())
+
+    class ClosesOnFlush:
+        def write(self, _):
+            return None
+
+        def flush(self):
+            raise BrokenPipeError(32, "Broken pipe")
+
+    exp = StdoutExporter(stream=ClosesOnFlush())
+    with pytest.raises(ExporterClosed):
+        exp.drain(store)
+    assert store.pending(exp.name), "undelivered envelopes stay pending"

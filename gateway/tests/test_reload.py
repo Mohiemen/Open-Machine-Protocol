@@ -44,12 +44,17 @@ def floor(tmp_path):
     write_registry("m-one-01")
     out = open(tmp_path / "out.ndjson", "w")
     err = open(tmp_path / "err.txt", "w")
+    # Strip PYTHONUNBUFFERED deliberately. Some dev containers set it, and
+    # with it set this test cannot see a missing flush in the stdout exporter
+    # - which is exactly the bug it failed on in CI for a week while passing
+    # locally. The daemon must stream to a redirected file on its own.
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONUNBUFFERED"}
     proc = subprocess.Popen(
         [sys.executable, "-m", "omp.cli", "run", "--registry", str(reg),
          "--state-dir", str(tmp_path / "state"), "--adapters-dir",
          str(REPO / "adapters"), "--gateway-id", "gw-rl-01",
          "--duration", "20", "--prune-interval", "0.5"],
-        stdout=out, stderr=err, cwd=REPO)
+        stdout=out, stderr=err, cwd=REPO, env=env)
     pidfile = tmp_path / "state" / "gateway.pid"
     deadline = time.time() + 15
     while time.time() < deadline and not pidfile.exists():

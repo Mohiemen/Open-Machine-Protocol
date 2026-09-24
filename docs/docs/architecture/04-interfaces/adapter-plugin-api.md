@@ -122,7 +122,27 @@ gateway stop / registry reload
   └─ stop()  ──▶ start() returns ──▶ thread joined (10 s deadline)
 ```
 
-- One adapter instance per machine, even for multi-drop buses - shared transports are managed via the gateway's transport pool (`self.transport(...)` helper on AdapterBase) so two instances can share one RS485 line safely.
+- One adapter instance per machine, even for multi-drop buses - shared transports are managed via the gateway's transport pool (`self.transport(...)` helper on AdapterBase) so two instances can share one RS485 line safely:
+
+```python
+link = self.transport(                     # key by the PHYSICAL link,
+    f"modbus-rtu://{cfg['port']}",         # never by machine
+    lambda: serial.Serial(cfg["port"], cfg.get("baud", 9600), timeout=2),
+)
+
+def poll(request: bytes) -> bytes:
+    def txn(port):                         # write AND read inside one
+        port.reset_input_buffer()          # exchange - this is the contract
+        port.write(request)
+        return port.read(256)
+    try:
+        return link.exchange(txn)
+    except OSError:
+        link.reset()                       # neighbours reopen on demand
+        raise
+```
+
+  The atomic unit on a multi-drop bus is the whole **transaction**, not the individual read and write. Splitting them lets another machine's request land between yours and its reply, and both adapters then parse the wrong response - a failure that looks like random CRC errors on real hardware. `exchange()` holds the bus for the entire round trip; `reset()` drops a failed link so the next exchange reopens it without wedging the other machines on the bus. The gateway calls `release_transports()` after `stop()`, and the link closes when its last user lets go.
 - Adapters MUST be import-safe - no I/O at import time.
 - Restart policy on crash - exponential backoff (1 s to 5 min), crash count in health, machine marked `failed` after the configured limit.
 

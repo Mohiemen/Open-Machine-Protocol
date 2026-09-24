@@ -1,0 +1,43 @@
+# Mosquitto ACL - Hardening Guide s5 [Recommended]
+#
+#   per-gateway credentials, write-only to its own omp/{site}/... subtree;
+#   platform consumers read-only.
+#
+# The asymmetry is the point. A compromised gateway can fabricate its own
+# machines' history - nothing removes that - but it must not be able to
+# forge another site's, or to read the floor back out. A compromised
+# consumer must not be able to write anything at all.
+#
+# Install:
+#   listener 8883
+#   acl_file /etc/mosquitto/omp.acl
+#   password_file /etc/mosquitto/omp.passwd
+#   allow_anonymous false
+# then: sudo mosquitto_passwd -c /etc/mosquitto/omp.passwd gw-dhaka-01
+
+# Nobody gets anything by default.
+topic
+
+# --- gateways: write only, own subtree only -----------------------------
+# One block per gateway. The username SHOULD be the gateway_id, so the
+# broker's auth log and the envelopes' gateway_id field agree during an
+# incident (s8 step 4).
+user gw-dhaka-01
+topic write omp/dhaka/+/+/+/+
+
+user gw-dhaka-02
+topic write omp/dhaka/+/+/+/+
+
+# --- consumers: read only ------------------------------------------------
+user platform-ingest
+topic read omp/#
+
+# A per-site consumer, e.g. a brand's auditor given one site's data only.
+user auditor-dhaka
+topic read omp/dhaka/#
+
+# --- deliberately absent -------------------------------------------------
+# No user has write access to another site's subtree, and no gateway can
+# read. There is no command topic in OMP at all: the protocol is read-only
+# at the edge, and the broker should not be the place that quietly changes
+# that.

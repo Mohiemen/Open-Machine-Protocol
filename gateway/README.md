@@ -17,8 +17,11 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   error attached, and their seq is a visible gap, never reused), SQLite WAL
   store with per-machine persistent seq and per-exporter cursors
   (at-least-once).
-- `omp.exporters` - stdout and MQTT (topic convention
-  `omp/{site}/{area}/{line}/{machine}/{schema}`, QoS 1, ack after publish).
+- `omp.exporters` - stdout, MQTT (topic convention
+  `omp/{site}/{area}/{line}/{machine}/{schema}`, QoS 1, ack after publish),
+  and REST (batched NDJSON, gzip, ack only after a 2xx; refuses plain HTTP to
+  non-loopback per Hardening Guide s5). Exports are coalesced by a drain
+  worker (`--drain-interval`) so batching exporters see real batches.
 - `omp-gateway run-once --adapter <dir> --config <yaml>` - the adapter
   development loop from the [Writing an Adapter guide](../docs/docs/guides/writing-an-adapter.md).
 - **Ed25519 signing** (`omp.core.keys`) - keypair generated on-device
@@ -40,10 +43,27 @@ pip install -e ./gateway -e ./tools   # gateway reuses omp-tools for spec loadin
   in place. The new file is validated fully first and refused if invalid;
   unchanged machines keep streaming without a seq break.
 
+- **Host audit** - `omp-gateway audit-host --state-dir …` checks the
+  [Hardening Guide](../docs/docs/security/hardening-guide.md) s3 Required
+  items (SSH policy, unattended-upgrades, unprivileged service user, serial
+  device-group access, dedicated device) plus keypair permissions and NTP,
+  stores a baseline and reports **drift** against it. Exit 0 clean, 1 drift,
+  2 a Required check failing - so it belongs in cron. A check it cannot
+  evaluate says UNKNOWN; it never counts as a pass.
+
+- **Release verification** - `omp-gateway verify-release <artifact> --pubkey
+  <key>` checks a minisign signature before you install anything
+  ([Hardening Guide](../docs/docs/security/hardening-guide.md) s6
+  [Required]). Both minisign formats, and the trusted comment's own global
+  signature, so a valid-looking version string cannot be forged. It never
+  fetches a key: one that travels with the artifact proves nothing. Exit 0
+  only when a signature was actually checked and passed - "cannot verify"
+  is exit 1, never a pass. **No OMP release key exists yet**, so `--pubkey`
+  is required until the project pins one.
+
 ## Not here yet
 
-REST / OPC UA / CSV exporters (CSV is a
+OPC UA exporter and CSV exporter (CSV is a
 [good first issue](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)),
-`tail`, a transport pool for shared RS485 buses, release signature
-verification (`verify-release`), and retrofit OTA. Tracked in the
+and retrofit OTA. Tracked in the
 [milestone plan](../docs/docs/architecture/10-roadmap/milestone-plan.md).

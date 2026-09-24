@@ -126,6 +126,32 @@ class Store:
                 (exporter, rowid),
             )
 
+    # -- observation (tail) ---------------------------------------------
+    def tail_after(self, after_rowid: int, limit: int = 500,
+                   machine_id: str | None = None) -> list[tuple[int, dict]]:
+        """Read buffered envelopes past `after_rowid` WITHOUT acking anything.
+
+        Deliberately not `pending()`: an observer must never advance an
+        exporter cursor. If tailing acked, retention would treat the data as
+        delivered and prune envelopes no exporter ever sent - watching the
+        stream would silently destroy it.
+        """
+        sql = "SELECT rowid_pk, envelope FROM buffer WHERE rowid_pk > ?"
+        params: list = [after_rowid]
+        if machine_id:
+            sql += " AND machine_id = ?"
+            params.append(machine_id)
+        sql += " ORDER BY rowid_pk LIMIT ?"
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [(r[0], json.loads(r[1])) for r in rows]
+
+    def max_rowid(self) -> int:
+        with self._lock:
+            row = self._conn.execute("SELECT MAX(rowid_pk) FROM buffer").fetchone()
+        return row[0] or 0
+
     # -- retention ------------------------------------------------------
     def prune(self, exporters: list[str], *, retention_days: float = 30,
               max_bytes: int | None = None, now: str | None = None) -> dict:

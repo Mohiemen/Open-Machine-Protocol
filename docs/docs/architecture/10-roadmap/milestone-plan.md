@@ -167,7 +167,9 @@ sections after this one.
 
 3. ~~**REST exporter**~~ - **done 2026-08-06**: batched NDJSON with gzip, acks
    only after a 2xx, transient failures leave the batch buffered, a 4xx stops
-   rather than wedging the buffer behind data the endpoint will never accept,
+   rather than wedging the buffer behind data the endpoint will never accept
+   *(changed 2026-10-08: a 4xx or redirect now pauses only that exporter with
+   30 s to 10 min backoff instead of stopping the gateway - see changelog)*,
    and plain HTTP to a non-loopback host is refused at construction per
    Hardening Guide s5 [Required]. Building it exposed that the daemon drained
    once per envelope, so a "batching" exporter posted one envelope per
@@ -309,3 +311,4 @@ with a negative control, and `AGENTS.md` now documents the trap.
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |
 | 2026-10-07 | Review fixes for the Unblocked Work Queue (PR #15), each with a regression test that fails without the fix: REST exporter no longer follows redirects (a login page answering 200 was acked as delivery); `audit-host` resolves sshd first-value-wins with Include order and Match scoping and ignores commented apt lines; adapters hold one transport reference per key so reconnects no longer leak links; `tail --no-follow` pages past 500 rows. 200 tests green. |
 | 2026-10-08 | Drain resilience: one exporter raising anything other than ExporterClosed (a full disk under CSV, an IncompleteRead from REST) used to kill the daemon's drain thread while adapters kept buffering, so collection looked healthy and nothing exported again. Exporters are now drained in isolation: the fault is logged once when it starts and once when it clears, data stays buffered, other exporters keep shipping. REST treats garbled HTTP responses as transient. 206 tests green. |
+| 2026-10-08 | A refusing REST endpoint (401/403/404/400, or a redirect) no longer stops the gateway. It used to raise ExporterClosed, which halted collection on every machine for one destination's problem - a token rotation or a platform deploy. It now raises ExporterPaused: only that exporter pauses, backing off from 30 s to 10 min so the endpoint is not hammered every 0.2 s tick, and it resumes by itself once the endpoint accepts. Other exporters keep shipping and the data stays buffered. Note: a rotated token is read at startup, so it still needs a gateway restart to take effect. ExporterClosed (stdout pipe closed) still stops. 216 tests green. |

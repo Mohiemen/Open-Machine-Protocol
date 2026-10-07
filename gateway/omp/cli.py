@@ -788,9 +788,20 @@ def _build_exporters(registry: dict):
                 ))
             except RestConfigError as exc:
                 raise SystemExit(f"rest exporter: {exc}") from None
+        elif e["type"] == "csv":
+            from .exporters.csv import CsvConfigError, CsvExporter
+
+            try:
+                built.append(CsvExporter(
+                    e["dir"],
+                    max_bytes=e.get("max_bytes", 10 * 1024 * 1024),
+                    batch_size=e.get("batch_size", 500),
+                ))
+            except (CsvConfigError, KeyError, OSError) as exc:
+                raise SystemExit(f"csv exporter: {exc!r}") from None
         else:
             raise SystemExit(f"unsupported exporter type {e['type']!r} "
-                             "(OPC UA is roadmap; CSV is issue #4)")
+                             "(OPC UA is roadmap)")
     return built
 
 

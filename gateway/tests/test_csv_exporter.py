@@ -126,3 +126,68 @@ def test_registry_builds_a_csv_exporter(tmp_path):
                                               "dir": str(tmp_path / "o")}]})
     assert isinstance(exp, CsvExporter)
     json.dumps(exp.name)
+
+
+class _TearingFile:
+    """Writes half of the next row, then fails - a disk filling mid-row."""
+
+    def __init__(self, real):
+        self.real = real
+
+    def write(self, data):
+        self.real.write(data[: len(data) // 2])
+        self.real.flush()
+        raise OSError("disk full")
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
+
+def test_a_torn_row_from_a_failed_write_does_not_glue_to_the_retry(tmp_path):
+    store = seeded(tmp_path, 4)
+    exp = CsvExporter(tmp_path / "out", batch_size=2)
+    exp.publish(store.pending("csv", 1)[0][1])        # open a real handle
+    exp._fh = _TearingFile(exp._fh)
+    with pytest.raises(OSError):
+        exp.drain(store)
+    assert exp.drain(store) == 4                      # retry on SAME instance
+    seqs = [e["seq"] for e in read_envelopes(files(tmp_path / "out"))]
+    assert set(seqs) == {1, 2, 3, 4}, "every row readable, none garbled"
+
+
+@pytest.mark.parametrize("bad", [0, -5, "1048576", 1.5, True, None])
+def test_bad_sizes_are_config_errors_not_tracebacks(tmp_path, bad):
+    with pytest.raises(CsvConfigError):
+        CsvExporter(tmp_path, max_bytes=bad)
+    with pytest.raises(CsvConfigError):
+        CsvExporter(tmp_path, batch_size=bad)
+
+
+def test_registry_reports_a_bad_size_cleanly(tmp_path):
+    from omp.cli import _build_exporters
+    with pytest.raises(SystemExit, match="max_bytes"):
+        _build_exporters({"exporters": [{"type": "csv", "dir": str(tmp_path),
+                                         "max_bytes": "10MB"}]})
+
+
+def test_new_file_fsyncs_its_directory(tmp_path, monkeypatch):
+    import os
+    import stat
+    synced = []
+    real = os.fsync
+    monkeypatch.setattr("omp.exporters.csv.os.fsync",
+                        lambda fd: (synced.append(stat.S_ISDIR(os.fstat(fd).st_mode)),
+                                    real(fd))[1])
+    store = seeded(tmp_path, 1)
+    CsvExporter(tmp_path / "out").publish(store.pending("csv", 1)[0][1])
+    assert True in synced, "directory entry was never made durable"
+
+
+def test_present_but_empty_fields_survive_the_round_trip(tmp_path):
+    store = seeded(tmp_path, 1)
+    env = store.pending("csv", 1)[0][1]
+    env["sig"] = ""
+    env["x-empty"] = ""
+    env["x-null"] = None
+    CsvExporter(tmp_path / "out").publish(env)
+    assert next(read_envelopes(files(tmp_path / "out"))) == env

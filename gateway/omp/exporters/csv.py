@@ -45,15 +45,17 @@ def _day(envelope: dict) -> str:
 
 def _row(envelope: dict) -> list[str]:
     row = []
+    extra = {k: v for k, v in envelope.items() if k not in _KNOWN}
     for col in COLUMNS[:-1]:
         v = envelope.get(col)
-        if v is None:
+        if v is None or v == "":
             row.append("")
+            if col in envelope:          # present-but-empty must not vanish
+                extra[col] = v
         elif col in _JSON_COLUMNS:
             row.append(json.dumps(v, ensure_ascii=False, separators=(",", ":")))
         else:
             row.append(str(v))
-    extra = {k: v for k, v in envelope.items() if k not in _KNOWN}
     row.append(json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
                if extra else "")
     return row
@@ -64,6 +66,10 @@ class CsvExporter(Exporter):
 
     def __init__(self, directory: str | os.PathLike, *,
                  max_bytes: int = 10 * 1024 * 1024, batch_size: int = 500):
+        for name, value in (("max_bytes", max_bytes), ("batch_size", batch_size)):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise CsvConfigError(f"{name} must be a positive integer, "
+                                     f"got {value!r}")
         if max_bytes < 1024:
             raise CsvConfigError("max_bytes must be at least 1024")
         self.dir = Path(directory)
@@ -108,10 +114,35 @@ class CsvExporter(Exporter):
                 index += 1
                 path = self._path(day, index)
         new = not path.exists() or path.stat().st_size == 0
-        self._fh = open(path, "a", encoding="utf-8", newline="")
         self._day, self._index = day, index
+        self._start_file(path, new)
+
+    def _fsync_dir(self) -> None:
+        """A new file is only durable once its directory entry is: without
+        this a power loss can drop a whole acked file, not just its tail."""
+        fd = os.open(self.dir, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def _start_file(self, path: Path, new: bool) -> None:
+        self._fh = open(path, "a", encoding="utf-8", newline="")
         if new:
             csv.writer(self._fh, lineterminator="\n").writerow(COLUMNS)
+            self._sync()
+            self._fsync_dir()
+
+    def _abandon(self) -> None:
+        """Drop the handle after a failed write so the next one reopens the
+        file through _open's tail repair. A half-written row left in an open
+        handle would otherwise glue itself to the next complete row."""
+        fh, self._fh, self._day = self._fh, None, None
+        if fh:
+            try:
+                fh.close()
+            except OSError:
+                pass            # the same fault that got us here
 
     def _close(self) -> None:
         if self._fh:
@@ -125,9 +156,7 @@ class CsvExporter(Exporter):
         elif self._fh.tell() >= self.max_bytes:
             self._close()
             self._index += 1
-            self._fh = open(self._path(day, self._index), "a",
-                            encoding="utf-8", newline="")
-            csv.writer(self._fh, lineterminator="\n").writerow(COLUMNS)
+            self._start_file(self._path(day, self._index), True)
         csv.writer(self._fh, lineterminator="\n").writerow(_row(envelope))
 
     def _sync(self) -> None:
@@ -137,8 +166,12 @@ class CsvExporter(Exporter):
 
     # -- Exporter ----------------------------------------------------------
     def publish(self, envelope: dict) -> None:
-        self._write(envelope)
-        self._sync()
+        try:
+            self._write(envelope)
+            self._sync()
+        except Exception:
+            self._abandon()
+            raise
 
     def drain(self, store: Store, batch: int = 500) -> int:
         """One fsync per batch, then ack the batch.
@@ -152,9 +185,13 @@ class CsvExporter(Exporter):
             rows = store.pending(self.name, min(batch, self.batch_size))
             if not rows:
                 return sent
-            for _, envelope in rows:
-                self._write(envelope)
-            self._sync()
+            try:
+                for _, envelope in rows:
+                    self._write(envelope)
+                self._sync()
+            except Exception:
+                self._abandon()
+                raise
             store.ack(self.name, rows[-1][0])
             sent += len(rows)
 

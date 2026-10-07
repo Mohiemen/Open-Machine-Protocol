@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Living document |
 | **Location** | docs/architecture/10-roadmap/milestone-plan.md |
-| **Last updated** | 2026-09-24 |
+| **Last updated** | 2026-10-07 |
 | **Rule** | This file MUST be updated in the same PR as any change that completes, adds, reorders, or invalidates a roadmap item. A milestone is not "achieved" until it is checked off here with a date. Stale roadmaps are bugs - file them like bugs. |
 
 This is the single place where the project's plans and their real status meet.
@@ -62,7 +62,7 @@ cannot be conformance-tested.
 
 ### M2 - v0.1 implementation (per architecture doc section 8)
 
-- [x] Gateway runtime core - registry validation, engine (validate-before-buffer, dead letters, seq persistence), SQLite WAL buffer with exporter cursors, MQTT + stdout exporters, adapter API per the interface doc, `run-once` dev loop *(2026-07-23)*; Ed25519 signing + key management, `run` daemon, `install-service`/`show-identity`/`status`/`dead-letters` *(2026-07-23; REST/OPC UA/CSV exporters - CSV [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4), remain)*; retention pruning with cursor safety, adapter restart policy, probe timeouts, and registry hot-reload *(2026-08-06)*
+- [x] Gateway runtime core - registry validation, engine (validate-before-buffer, dead letters, seq persistence), SQLite WAL buffer with exporter cursors, MQTT + stdout exporters, adapter API per the interface doc, `run-once` dev loop *(2026-07-23)*; Ed25519 signing + key management, `run` daemon, `install-service`/`show-identity`/`status`/`dead-letters` *(2026-07-23; REST exporter later, see queue; CSV exporter 2026-10-07 [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4); OPC UA remains)*; retention pruning with cursor safety, adapter restart policy, probe timeouts, and registry hot-reload *(2026-08-06)*
 - [x] omp-validate CLI (profile-aware) - passes all conformance vectors, wired as pytest + CI *(2026-07-23)*
 - [x] omp-simulate with generic, textile-sewing, textile-dyeing scenarios - chaos mode, MQTT export, seeded reproducibility *(2026-07-23)*
 - [x] omp-sniff capture tool - serial + stdin capture, annotations, decode view *(2026-07-23; pcap mode still open - [#3](https://github.com/Mohiemen/Open-Machine-Protocol/issues/3))*
@@ -229,7 +229,7 @@ would empty it:
 | Item | Issue |
 |---|---|
 | `omp-sniff` pcap mode | [#3](https://github.com/Mohiemen/Open-Machine-Protocol/issues/3) |
-| CSV exporter | [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) |
+| ~~CSV exporter~~ built 2026-10-07 by the maintainer, see changelog | [#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4) |
 | Grafana visual verification | [#6](https://github.com/Mohiemen/Open-Machine-Protocol/issues/6) |
 | Bangla first-real-machine | [#7](https://github.com/Mohiemen/Open-Machine-Protocol/issues/7) |
 | Modbus register maps | [#8](https://github.com/Mohiemen/Open-Machine-Protocol/issues/8) |
@@ -307,3 +307,4 @@ with a negative control, and `AGENTS.md` now documents the trap.
 | 2026-08-06 | Track B: `omp-validate --audit` implements the five DPP checks (completeness, integrity, authenticity, consistency, conformance) and emits the citation block; 8 executable consumer conformance suites close M1's partial item. Two real bugs found by building them: the reference consumer rejected unknown event types from newer profile minors (violating spec s9 and the guide's own 'hard-coding profiles' warning), and omp-simulate reused run_ids across invocations against spec 7.3's uniqueness SHOULD. 102 tests green. |
 | 2026-08-06 | PR #1 merged - the foundation is on main. Contributor on-ramp built: PR and issue templates (protocol capture, deployment report, adapter request, bug, translation), and 11 seeded issues so the good-first-issue links in README/CONTRIBUTING finally resolve. Open roadmap items are now cross-referenced to their tracking issues. |
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |
+| 2026-10-07 | CSV exporter ([#4](https://github.com/Mohiemen/Open-Machine-Protocol/issues/4)): rotating `omp-YYYYMMDD-NNNN.csv` evidence files for air-gapped sites, rotated by UTC day or size. Acks only after fsync of the batch and, for a new file, its directory; a failed write abandons the handle so a torn row cannot glue to the retry; torn tails are cut on restart; `read_envelopes` restores the exact envelopes, including present-but-empty fields. Taken from the contributor on-ramp list on purpose, by the maintainer. 211 tests green. |

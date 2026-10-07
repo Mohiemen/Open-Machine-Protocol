@@ -21,6 +21,7 @@ stdlib only (urllib) - a gateway on a Pi should not need a HTTP library.
 from __future__ import annotations
 
 import gzip
+import http.client
 import ipaddress
 import json
 import os
@@ -29,7 +30,7 @@ import urllib.request
 from urllib.parse import urlparse
 
 from ..core.store import Store
-from .base import Exporter, ExporterClosed
+from .base import Exporter, ExporterPaused
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -140,22 +141,27 @@ class RestExporter(Exporter):
                 self.post_batch(envelopes)
             except urllib.error.HTTPError as exc:
                 if 300 <= exc.code < 400:
-                    raise ExporterClosed(
+                    raise ExporterPaused(
                         f"endpoint answered {exc.code} (redirect); not "
                         "following it - the batch was NOT delivered. Point "
                         "the exporter at the final URL") from exc
                 if 400 <= exc.code < 500 and exc.code not in (408, 429):
                     # The endpoint says this batch is malformed or unauthorized.
-                    # Retrying forever would wedge the buffer behind data it
-                    # will never accept, so stop and let an operator see it -
-                    # still without acking, because it was NOT delivered.
-                    raise ExporterClosed(
-                        f"endpoint rejected the batch with {exc.code}; "
-                        "not retrying (check credentials or payload contract)"
+                    # Hammering it every drain would not help, and stopping
+                    # the gateway would halt collection on every machine for
+                    # one destination's problem (a token rotation, a deploy).
+                    # Pause this exporter with backoff - still without
+                    # acking, because it was NOT delivered.
+                    raise ExporterPaused(
+                        f"endpoint rejected the batch with {exc.code} "
+                        "(check credentials or payload contract)"
                     ) from exc
                 return sent          # transient: try again next drain
-            except (urllib.error.URLError, TimeoutError, OSError):
-                return sent          # unreachable: the buffer keeps the data
+            except (urllib.error.URLError, TimeoutError, OSError,
+                    http.client.HTTPException):
+                # unreachable, or a garbled/truncated response: not delivered
+                # as far as we can tell, so the buffer keeps the data
+                return sent
             for rowid, _ in rows:
                 store.ack(self.name, rowid)
             sent += len(rows)

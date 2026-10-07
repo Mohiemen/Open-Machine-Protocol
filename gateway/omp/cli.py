@@ -571,6 +571,7 @@ def cmd_run(args) -> int:
     from .exporters.base import ExporterClosed
 
     stop_evt = threading.Event()
+    drain_state = _DrainState()
 
     def drain():
         """Returns False once a destination is gone for good - the caller
@@ -578,8 +579,7 @@ def cmd_run(args) -> int:
         stay in the buffer unacked, so nothing is silently lost."""
         try:
             with drain_lock:
-                for exporter in exporters:
-                    exporter.drain(store)
+                _drain_exporters(exporters, store, drain_state)
         except ExporterClosed:
             stop_evt.set()
             return False
@@ -749,6 +749,66 @@ def cmd_run(args) -> int:
     except BrokenPipeError:
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     return 0
+
+
+class _DrainState:
+    """Per-exporter fault memory that lives across drain passes."""
+
+    PAUSE_FIRST_S = 30
+    PAUSE_MAX_S = 600
+
+    def __init__(self, clock=time.monotonic):
+        self.clock = clock
+        self.last_error: dict[str, str] = {}
+        self.paused: dict[str, tuple[float, float]] = {}   # name -> (until, wait)
+
+
+def _drain_exporters(exporters, store, state: _DrainState) -> None:
+    """Drain every exporter; one failing must not stop the rest.
+
+    - ExporterClosed propagates: that destination is gone for good (a closed
+      stdout pipe) and the caller stops.
+    - ExporterPaused (a 401, 404 or redirect from an endpoint) pauses just
+      that exporter, backing off from 30 s to 10 min, so a refusing endpoint
+      is neither hammered every tick nor allowed to halt collection on every
+      machine. It resumes by itself once the endpoint accepts again.
+    - Anything else (a full disk, a garbled HTTP response) is logged and
+      retried next pass. Without this, one unexpected exception killed the
+      drain thread while adapters kept buffering - collection looked healthy
+      and nothing was exported again.
+
+    In every case nothing was acked, so the data is still buffered. A fault
+    is logged when it starts and when it clears, not on every tick.
+    """
+    from .exporters.base import ExporterClosed, ExporterPaused
+
+    now = state.clock()
+    for exporter in exporters:
+        name = exporter.name
+        paused = state.paused.get(name)
+        if paused and now < paused[0]:
+            continue
+        try:
+            exporter.drain(store)
+        except ExporterClosed:
+            raise
+        except ExporterPaused as exc:
+            wait = (min(paused[1] * 2, state.PAUSE_MAX_S) if paused
+                    else state.PAUSE_FIRST_S)
+            state.paused[name] = (now + wait, wait)
+            print(f"exporter {name}: paused - {exc}; data stays buffered, "
+                  f"retrying in {wait:g}s", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001 - isolate, log, retry
+            msg = f"{type(exc).__name__}: {exc}"
+            if state.last_error.get(name) != msg:
+                print(f"exporter {name}: {msg} - data stays buffered, "
+                      "retrying each drain", file=sys.stderr)
+            state.last_error[name] = msg
+        else:
+            was_faulted = (state.paused.pop(name, None) is not None) | \
+                (state.last_error.pop(name, None) is not None)
+            if was_faulted:
+                print(f"exporter {name}: recovered", file=sys.stderr)
 
 
 def _build_exporters(registry: dict):

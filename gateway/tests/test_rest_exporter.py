@@ -13,7 +13,7 @@ import pytest
 from omp.adapter import Body
 from omp.core.engine import Engine
 from omp.core.store import Store
-from omp.exporters.base import ExporterClosed
+from omp.exporters.base import ExporterPaused
 from omp.exporters.rest import RestConfigError, RestExporter
 
 
@@ -135,13 +135,13 @@ def test_a_timeout_leaves_the_batch_for_retry(tmp_path):
     assert len(store.pending("rest")) == 5
 
 
-def test_a_4xx_stops_rather_than_wedging_the_buffer(tmp_path):
-    """401/400 means this batch will never be accepted. Retrying forever
-    would block every later envelope behind it, so stop loudly - but still
-    without acking, because it was not delivered."""
+def test_a_4xx_pauses_rather_than_hammering_the_endpoint(tmp_path):
+    """401/400 will not fix itself on the next tick. Pause this exporter
+    (the daemon backs off and keeps the others running) - but still without
+    acking, because it was not delivered."""
     store = seeded(tmp_path)
     exp = RestExporter("https://x/ingest", opener=FakeEndpoint(status=401))
-    with pytest.raises(ExporterClosed, match="401"):
+    with pytest.raises(ExporterPaused, match="401"):
         exp.drain(store)
     assert len(store.pending("rest")) == 5
 
@@ -217,7 +217,7 @@ def test_a_redirect_is_never_acked_as_delivery(tmp_path):
     store = seeded(tmp_path)
     exp = RestExporter("https://x/ingest",
                        opener=FakeEndpoint(status=302))
-    with pytest.raises(ExporterClosed, match="redirect"):
+    with pytest.raises(ExporterPaused, match="redirect"):
         exp.drain(store)
     assert len(store.pending("rest")) == 5, "nothing acked"
 

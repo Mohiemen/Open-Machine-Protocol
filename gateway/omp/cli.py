@@ -571,6 +571,7 @@ def cmd_run(args) -> int:
     from .exporters.base import ExporterClosed
 
     stop_evt = threading.Event()
+    drain_errors: dict[str, str] = {}
 
     def drain():
         """Returns False once a destination is gone for good - the caller
@@ -578,8 +579,7 @@ def cmd_run(args) -> int:
         stay in the buffer unacked, so nothing is silently lost."""
         try:
             with drain_lock:
-                for exporter in exporters:
-                    exporter.drain(store)
+                _drain_exporters(exporters, store, drain_errors)
         except ExporterClosed:
             stop_evt.set()
             return False
@@ -749,6 +749,37 @@ def cmd_run(args) -> int:
     except BrokenPipeError:
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     return 0
+
+
+def _drain_exporters(exporters, store, last_error: dict[str, str]) -> None:
+    """Drain every exporter; one failing must not stop the rest.
+
+    ExporterClosed still propagates - that destination is gone for good and
+    the caller decides to stop. Anything else (a full disk, a garbled HTTP
+    response) is logged and left for the next pass: the exporter did not ack,
+    so its data is still buffered, and the drain thread stays alive. Without
+    this, one unexpected exception killed the thread while adapters kept
+    buffering - collection looked healthy and nothing was exported again.
+
+    `last_error` holds the last message per exporter so a fault that repeats
+    every pass is logged when it starts and when it clears, not every tick.
+    """
+    from .exporters.base import ExporterClosed
+
+    for exporter in exporters:
+        try:
+            exporter.drain(store)
+        except ExporterClosed:
+            raise
+        except Exception as exc:  # noqa: BLE001 - isolate, log, retry
+            msg = f"{type(exc).__name__}: {exc}"
+            if last_error.get(exporter.name) != msg:
+                print(f"exporter {exporter.name}: {msg} - data stays buffered, "
+                      "retrying each drain", file=sys.stderr)
+            last_error[exporter.name] = msg
+        else:
+            if last_error.pop(exporter.name, None) is not None:
+                print(f"exporter {exporter.name}: recovered", file=sys.stderr)
 
 
 def _build_exporters(registry: dict):

@@ -21,6 +21,7 @@ stdlib only (urllib) - a gateway on a Pi should not need a HTTP library.
 from __future__ import annotations
 
 import gzip
+import http.client
 import ipaddress
 import json
 import os
@@ -154,8 +155,11 @@ class RestExporter(Exporter):
                         "not retrying (check credentials or payload contract)"
                     ) from exc
                 return sent          # transient: try again next drain
-            except (urllib.error.URLError, TimeoutError, OSError):
-                return sent          # unreachable: the buffer keeps the data
+            except (urllib.error.URLError, TimeoutError, OSError,
+                    http.client.HTTPException):
+                # unreachable, or a garbled/truncated response: not delivered
+                # as far as we can tell, so the buffer keeps the data
+                return sent
             for rowid, _ in rows:
                 store.ack(self.name, rowid)
             sent += len(rows)

@@ -78,11 +78,54 @@ def test_ssh_policy_failures(tmp_path, kwargs, detail):
 
 def test_sshd_config_d_dropin_overrides_the_main_file(tmp_path):
     host = good_host(tmp_path)
+    cfg = host.root / "etc/ssh/sshd_config"
+    cfg.write_text("Include /etc/ssh/sshd_config.d/*.conf\n" + cfg.read_text())
     d = host.root / "etc/ssh/sshd_config.d"
     d.mkdir()
     (d / "50-cloud-init.conf").write_text("PasswordAuthentication yes\n")
     c = ha.check_ssh(host)
     assert c.status == ha.FAIL and "password auth" in c.detail
+
+
+def test_sshd_first_value_wins_so_a_later_hardening_dropin_does_not_rescue(tmp_path):
+    host = good_host(tmp_path)
+    cfg = host.root / "etc/ssh/sshd_config"
+    cfg.write_text("Include /etc/ssh/sshd_config.d/*.conf\n" + cfg.read_text())
+    d = host.root / "etc/ssh/sshd_config.d"
+    d.mkdir()
+    (d / "50-cloud-init.conf").write_text("PasswordAuthentication yes\n")
+    (d / "99-harden.conf").write_text("PasswordAuthentication no\n")
+    assert ha.check_ssh(host).status == ha.FAIL      # sshd keeps the first: yes
+
+
+def test_sshd_dropin_without_an_include_is_ignored(tmp_path):
+    host = good_host(tmp_path)
+    d = host.root / "etc/ssh/sshd_config.d"
+    d.mkdir()
+    (d / "50-cloud-init.conf").write_text("PasswordAuthentication yes\n")
+    assert ha.check_ssh(host).status == ha.OK        # sshd never reads it
+
+
+def test_sshd_match_block_does_not_count_as_global(tmp_path):
+    host = good_host(tmp_path)
+    cfg = host.root / "etc/ssh/sshd_config"
+    cfg.write_text("PasswordAuthentication no\nMatch User backup\n"
+                   "PasswordAuthentication yes\nPermitRootLogin yes\n"
+                   "PubkeyAuthentication yes\nKbdInteractiveAuthentication no\n")
+    c = ha.check_ssh(host)
+    assert "password auth" not in c.detail and "root login" in c.detail  # root default
+
+
+def test_commented_or_overridden_unattended_upgrade_is_not_on(tmp_path):
+    host = good_host(tmp_path)
+    f = host.root / "etc/apt/apt.conf.d/20auto-upgrades"
+    f.write_text('// APT::Periodic::Unattended-Upgrade "1";\n')
+    assert ha.check_unattended_upgrades(host).status == ha.FAIL
+    f.write_text('// APT::Periodic::Unattended-Upgrade "1";\n'
+                 'APT::Periodic::Unattended-Upgrade "0";\n')
+    assert ha.check_unattended_upgrades(host).status == ha.FAIL
+    f.write_text('/* Unattended-Upgrade "1"; */\n#Unattended-Upgrade "1";\n')
+    assert ha.check_unattended_upgrades(host).status == ha.FAIL
 
 
 def test_missing_sshd_config_is_unknown_not_ok(tmp_path):

@@ -96,3 +96,12 @@ def test_missing_buffer_is_an_error_not_a_traceback(tmp_path, capsys):
     assert cli_main(["tail", "--state-dir", str(tmp_path / "nope"),
                      "--no-follow"]) == 1
     assert "no gateway buffer" in capsys.readouterr().err
+
+
+def test_no_follow_prints_everything_past_one_page(tmp_path):
+    """tail_after pages at 500 rows; a one-shot tail must keep paging, not
+    stop after the first page and silently drop the rest."""
+    seeded(tmp_path, 1200)
+    assert [e["seq"] for e in tail(tmp_path)] == list(range(1, 1201))
+    assert [e["seq"] for e in tail(tmp_path, "--last", "800")] == \
+        list(range(401, 1201))

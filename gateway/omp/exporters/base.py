@@ -17,6 +17,13 @@ class ExporterClosed(Exception):
     by `head`. Callers stop draining rather than acking undelivered data."""
 
 
+class ExporterPaused(Exception):
+    """The destination refused this data in a way an immediate retry will not
+    fix - a 401 after a token rotation, a 404 mid-deploy, a redirect. Pause
+    THIS exporter with backoff; the others keep shipping and the data stays
+    buffered until it is accepted."""
+
+
 class Exporter:
     name = "base"
 

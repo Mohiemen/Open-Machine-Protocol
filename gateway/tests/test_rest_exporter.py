@@ -13,7 +13,7 @@ import pytest
 from omp.adapter import Body
 from omp.core.engine import Engine
 from omp.core.store import Store
-from omp.exporters.base import ExporterClosed
+from omp.exporters.base import ExporterPaused
 from omp.exporters.rest import RestConfigError, RestExporter
 
 
@@ -135,13 +135,13 @@ def test_a_timeout_leaves_the_batch_for_retry(tmp_path):
     assert len(store.pending("rest")) == 5
 
 
-def test_a_4xx_stops_rather_than_wedging_the_buffer(tmp_path):
-    """401/400 means this batch will never be accepted. Retrying forever
-    would block every later envelope behind it, so stop loudly - but still
-    without acking, because it was not delivered."""
+def test_a_4xx_pauses_rather_than_hammering_the_endpoint(tmp_path):
+    """401/400 will not fix itself on the next tick. Pause this exporter
+    (the daemon backs off and keeps the others running) - but still without
+    acking, because it was not delivered."""
     store = seeded(tmp_path)
     exp = RestExporter("https://x/ingest", opener=FakeEndpoint(status=401))
-    with pytest.raises(ExporterClosed, match="401"):
+    with pytest.raises(ExporterPaused, match="401"):
         exp.drain(store)
     assert len(store.pending("rest")) == 5
 
@@ -208,3 +208,50 @@ def test_output_is_exactly_ndjson(tmp_path):
     assert len(ep.batches[0]) == 2
     for env in ep.batches[0]:
         assert set(env) >= {"omp_version", "gateway_id", "seq", "checksum"}
+
+
+# ------------------------------------------------------------- redirects
+def test_a_redirect_is_never_acked_as_delivery(tmp_path):
+    """urllib turns a redirected POST into a body-less GET; a login page that
+    answers that 200 must not cost us the batch."""
+    store = seeded(tmp_path)
+    exp = RestExporter("https://x/ingest",
+                       opener=FakeEndpoint(status=302))
+    with pytest.raises(ExporterPaused, match="redirect"):
+        exp.drain(store)
+    assert len(store.pending("rest")) == 5, "nothing acked"
+
+
+def test_the_default_opener_does_not_follow_redirects():
+    import http.server
+    import threading
+    hits = []
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            hits.append(("POST", self.path))
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def do_GET(self):
+            hits.append(("GET", self.path))
+            self.send_response(200)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        exp = RestExporter(f"http://127.0.0.1:{srv.server_port}/ingest",
+                           allow_plaintext_local=True)
+        with pytest.raises(urllib.error.HTTPError) as err:
+            exp.post_batch([{"a": 1}])
+        assert err.value.code == 302
+        assert hits == [("POST", "/ingest")], "the redirect was not chased"
+    finally:
+        srv.shutdown()

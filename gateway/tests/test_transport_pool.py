@@ -147,3 +147,18 @@ def test_default_pool_exists_so_adapters_work_unwired():
     a = BusAdapter(config={})
     assert isinstance(a.transport("k", object), SharedTransport)
     a.release_transports()
+
+
+def test_reconnects_do_not_leak_references():
+    """The modbus adapter calls transport() again after every link drop;
+    one release_transports() must still close the link."""
+    pool = TransportPool()
+    bus = InterleaveDetectingBus()
+    a = BusAdapter(config={"bus": bus, "port": "/dev/ttyUSB0", "unit": 1},
+                   transport_pool=pool)
+    first = a.transport("/dev/ttyUSB0", lambda: bus)
+    for _ in range(3):                              # three reconnects
+        assert a.transport("/dev/ttyUSB0", lambda: bus) is first
+    assert pool.keys == ["/dev/ttyUSB0"]
+    a.release_transports()
+    assert pool.keys == [], "a leaked reference would keep the port open"

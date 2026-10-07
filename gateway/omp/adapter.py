@@ -82,7 +82,7 @@ class AdapterBase:
 
             transport_pool = default_pool
         self._transport_pool = transport_pool
-        self._held_transports: set[str] = set()
+        self._held_transports: dict[str, object] = {}
 
     # -- lifecycle ------------------------------------------------------
     def probe(self, config: dict) -> MachineInfo:  # pragma: no cover - abstract
@@ -114,8 +114,12 @@ class AdapterBase:
         them lets another machine's request land between yours and its reply,
         and each adapter then reads the other's answer.
         """
-        t = self._transport_pool.get(key, factory)
-        self._held_transports.add(key)
+        # One reference per key per adapter: reconnect loops call this again
+        # after every link drop, and release_transports() lets go only once.
+        t = self._held_transports.get(key)
+        if t is None:
+            t = self._transport_pool.get(key, factory)
+            self._held_transports[key] = t
         return t
 
     def release_transports(self) -> None:

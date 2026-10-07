@@ -91,28 +91,51 @@ _COMMANDS = {
 
 # -- individual checks --------------------------------------------------
 def _sshd_settings(host: Host) -> dict[str, str] | None:
-    """Effective sshd directives; later files and later lines win, which is
-    how sshd_config.d drop-ins actually behave for most distro layouts."""
-    texts = []
+    """Effective global sshd directives, the way sshd itself resolves them.
+
+    sshd keeps the FIRST value it sees for a directive, reading the main file
+    top to bottom and expanding each `Include` in place. Distro packages put
+    `Include /etc/ssh/sshd_config.d/*.conf` at the top, so drop-ins (read in
+    lexical order) beat the main file and an earlier drop-in beats a later one
+    - `50-cloud-init.conf` saying `yes` defeats `99-harden.conf` saying `no`.
+    A drop-in is only consulted if some Include pulls it in. Directives under
+    a `Match` line apply to a subset of connections, not globally, so they are
+    ignored for the rest of that file.
+    """
     main = host.read("/etc/ssh/sshd_config")
-    if main is not None:
-        texts.append(main)
-    for p in host.glob("/etc/ssh/sshd_config.d", "*.conf"):
-        try:
-            texts.append(p.read_text(encoding="utf-8", errors="replace"))
-        except OSError:
-            continue
-    if not texts:
+    if main is None:
         return None
     settings: dict[str, str] = {}
-    for text in texts:
+
+    def apply(text: str, depth: int) -> None:
         for line in text.splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
             parts = re.split(r"[\s=]+", line, maxsplit=1)
-            if len(parts) == 2:
-                settings[parts[0].lower()] = parts[1].strip().split()[0].lower()
+            if len(parts) != 2:
+                continue
+            key, value = parts[0].lower(), parts[1].strip()
+            if key == "match":
+                return                      # rest of this file is conditional
+            if key == "include":
+                if depth >= 5:              # sshd caps nesting too
+                    continue
+                for pattern in value.split():
+                    where = pattern if pattern.startswith("/") \
+                        else f"/etc/ssh/{pattern}"
+                    folder, _, glob = where.rpartition("/")
+                    for path in host.glob(folder or "/", glob):
+                        try:
+                            apply(path.read_text(encoding="utf-8",
+                                                 errors="replace"), depth + 1)
+                        except OSError:
+                            continue
+                continue
+            if value:
+                settings.setdefault(key, value.split()[0].lower())
+
+    apply(main, 0)
     return settings
 
 
@@ -154,7 +177,13 @@ def check_unattended_upgrades(host: Host) -> Check:
         return Check("unattended_upgrades", REQUIRED, FAIL,
                      "no /etc/apt/apt.conf.d/20auto-upgrades - automatic "
                      "security updates are not configured", guide="s3")
-    on = re.search(r'Unattended-Upgrade"?\s+"1"', periodic) is not None
+    # apt.conf syntax: `//` and `/* */` comments and `#` lines are not
+    # configuration, and a later assignment overrides an earlier one.
+    live = re.sub(r"/\*.*?\*/", "", periodic, flags=re.S)
+    live = "\n".join(re.sub(r"//.*", "", ln) for ln in live.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    values = re.findall(r'Unattended-Upgrade"?\s+"(\d+)"', live)
+    on = bool(values) and values[-1] == "1"
     evidence = {"20auto-upgrades": periodic.strip()}
     if not on:
         return Check("unattended_upgrades", REQUIRED, FAIL,

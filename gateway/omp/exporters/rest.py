@@ -32,6 +32,20 @@ from ..core.store import Store
 from .base import Exporter, ExporterClosed
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never follow a redirect.
+
+    urllib turns a redirected POST into a body-less GET, and a login page or
+    captive portal at the other end answers that 200 - which would be acked as
+    a delivered batch. A redirect can also hop from https to plain http and
+    undo the transport refusal above. A moved endpoint is a configuration
+    problem to surface, not something to chase.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class RestConfigError(ValueError):
     """Refused at construction - a misconfiguration, not a runtime failure."""
 
@@ -85,7 +99,7 @@ class RestExporter(Exporter):
         self.timeout_s = timeout_s
         self.gzip_body = gzip_body
         self.headers = {k: resolve_secret(v) for k, v in (headers or {}).items()}
-        self._opener = opener or urllib.request.urlopen
+        self._opener = opener or urllib.request.build_opener(_NoRedirect).open
 
     # ------------------------------------------------------------------
     def post_batch(self, envelopes: list[dict]) -> None:
@@ -125,6 +139,11 @@ class RestExporter(Exporter):
             try:
                 self.post_batch(envelopes)
             except urllib.error.HTTPError as exc:
+                if 300 <= exc.code < 400:
+                    raise ExporterClosed(
+                        f"endpoint answered {exc.code} (redirect); not "
+                        "following it - the batch was NOT delivered. Point "
+                        "the exporter at the final URL") from exc
                 if 400 <= exc.code < 500 and exc.code not in (408, 429):
                     # The endpoint says this batch is malformed or unauthorized.
                     # Retrying forever would wedge the buffer behind data it

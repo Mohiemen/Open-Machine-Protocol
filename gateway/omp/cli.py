@@ -361,9 +361,9 @@ def cmd_tail(args) -> int:
             for rowid, envelope in rows:
                 print(json.dumps(envelope, ensure_ascii=False), flush=True)
                 cursor = rowid
-            if not args.follow:
-                break
             if not rows:
+                if not args.follow:
+                    break           # drained: tail_after pages at 500 rows
                 time.sleep(args.poll)
     except KeyboardInterrupt:
         pass

@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Living document |
 | **Location** | docs/architecture/10-roadmap/milestone-plan.md |
-| **Last updated** | 2026-09-24 |
+| **Last updated** | 2026-10-07 |
 | **Rule** | This file MUST be updated in the same PR as any change that completes, adds, reorders, or invalidates a roadmap item. A milestone is not "achieved" until it is checked off here with a date. Stale roadmaps are bugs - file them like bugs. |
 
 This is the single place where the project's plans and their real status meet.
@@ -307,3 +307,4 @@ with a negative control, and `AGENTS.md` now documents the trap.
 | 2026-08-06 | Track B: `omp-validate --audit` implements the five DPP checks (completeness, integrity, authenticity, consistency, conformance) and emits the citation block; 8 executable consumer conformance suites close M1's partial item. Two real bugs found by building them: the reference consumer rejected unknown event types from newer profile minors (violating spec s9 and the guide's own 'hard-coding profiles' warning), and omp-simulate reused run_ids across invocations against spec 7.3's uniqueness SHOULD. 102 tests green. |
 | 2026-08-06 | PR #1 merged - the foundation is on main. Contributor on-ramp built: PR and issue templates (protocol capture, deployment report, adapter request, bug, translation), and 11 seeded issues so the good-first-issue links in README/CONTRIBUTING finally resolve. Open roadmap items are now cross-referenced to their tracking issues. |
 | 2026-07-23 | Retrofit path drafted: esp32-ct-clamp firmware (provisioning AP, RMS sensing, node JSON over MQTT, offline ring buffer), BOM/wiring, FLASHING and PROVISIONING docs, and the gateway-side retrofit-esp32 adapter (node JSON -> energy/start/stop/maintenance_flag, replay-tested, 3 tests; 79 green overall). **The firmware was never compiled or run** - toolchain fetch failed in the authoring environment - so item 9 is marked `[~]` draft, not complete. Every M2 item is now either done or explicitly draft/hardware-gated; the project's remaining work is validation on real machines. |
+| 2026-10-07 | Review fixes for the Unblocked Work Queue (PR #15), each with a regression test that fails without the fix: REST exporter no longer follows redirects (a login page answering 200 was acked as delivery); `audit-host` resolves sshd first-value-wins with Include order and Match scoping and ignores commented apt lines; adapters hold one transport reference per key so reconnects no longer leak links; `tail --no-follow` pages past 500 rows. 200 tests green. |
